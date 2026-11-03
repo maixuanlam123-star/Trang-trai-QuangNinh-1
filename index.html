@@ -2637,9 +2637,10 @@
       });
 
       // ---------- thao tác ghi (admin) ----------
-      async function finCall(payload, msgEl, okText) {
+      async function finCall(payload, msgEl, okText, tempRow) {   // tempRow: dòng tạm đã hiện sẵn trên màn hình, bỏ đi khi có kết quả thật
         altMsg(msgEl, 'Đang ghi vào Sheet…');
-        try { const r = await callScript(payload); altMsg(msgEl, okText || 'Đã ghi vào Sheet.');
+        const dropTemp = () => { if (tempRow) { ['thu', 'chi'].forEach(k => { fin[k] = (fin[k] || []).filter(x => x.row !== tempRow); }); } };
+        try { const r = await callScript(payload); altMsg(msgEl, okText || 'Đã ghi vào Sheet.'); dropTemp();
           // Hiện ngay khoản vừa thêm (không chờ tải lại cả Sheet), rồi đồng bộ lại ngầm
           if (payload.action === 'finAdd' && r && r.row && (payload.kind === 'thu' || payload.kind === 'chi')) {
             const d = String(payload.date || ''), item = { row: r.row, date: d, dateText: d.split('-').reverse().join('/'), text: String(payload.text || ''), amount: Math.round(Number(payload.amount) || 0), cat: String(payload.cat || '') };
@@ -2647,7 +2648,7 @@
             renderAlt();
           }
           loadFin(); return r; }
-        catch (error) { if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
+        catch (error) { dropTemp(); if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
       }
       $('priceForm').addEventListener('submit', async event => {
         event.preventDefault(); if (!isAdmin()) return;
@@ -2695,8 +2696,13 @@
         const amount = Math.round(Number($('revAmount').value)), text = $('revText').value.trim();
         if (!(amount > 0) || !text || !$('revDate').value) { altMsg($('revMsg'), 'Hãy nhập đủ ngày, nội dung và số tiền.', true); return; }
         $('revSave').disabled = true;
-        const res = await finCall({ action: 'finAdd', kind: 'thu', date: $('revDate').value, text, amount }, $('revMsg'), 'Đã ghi vào sổ thu.');
-        if (res) { closeRev(); showToast('Đã ghi ' + revNum(amount) + ' đ vào sổ thu.'); } else $('revSave').disabled = false;
+        // hiện ngay khoản thu và đóng cửa sổ (không bắt chờ Sheet ghi xong); nếu ghi lỗi thì gỡ lại
+        const date = $('revDate').value, tmp = -Date.now();
+        fin.thu = (fin.thu || []).concat({ row: tmp, date, dateText: date.split('-').reverse().join('/'), text, amount, cat: '' });
+        closeRev(); showToast('Đang ghi ' + revNum(amount) + ' đ vào sổ thu…'); renderAlt();
+        const res = await finCall({ action: 'finAdd', kind: 'thu', date, text, amount }, $('revMsg'), 'Đã ghi vào sổ thu.', tmp);
+        if (res) showToast('Đã ghi ' + revNum(amount) + ' đ vào sổ thu.');
+        else { renderAlt(); showToast('Chưa ghi được khoản thu: ' + ($('revMsg').textContent || 'hãy thử lại.'), true); }
       });
       function previewPeriod(tr) {
         const f = tr.querySelector('.pf'), t = tr.querySelector('.pt'); if (!f || !t) return;
@@ -2711,18 +2717,41 @@
       $('periodBody').addEventListener('click', async event => {
         const btn = event.target.closest('button[data-pa]'); if (!btn || !isAdmin()) return;
         const tr = btn.closest('tr'), row = Number(tr.dataset.row);
+        if (row < 0) { showToast('Đợt đang được lưu, đợi vài giây rồi thao tác tiếp.'); return; }
         if (btn.dataset.pa === 'rev') { openRev(row); return; }
         if (btn.dataset.pa === 'edit') { periodEdit = row; altMsg($('periodMsg'), ''); renderSales(); return; }
         if (btn.dataset.pa === 'cancel') { periodEdit = null; altMsg($('periodMsg'), ''); renderSales(); return; }
         const f = tr.querySelector('.pf'), t = tr.querySelector('.pt');
-        if (btn.dataset.pa === 'del') { if (!window.confirm('Xóa đợt này khỏi bảng (ngày, số quả, thành tiền)? Số liệu từng ngày không bị ảnh hưởng.')) return; const r = await finCall({ action: 'periodClear', row }, $('periodMsg'), 'Đã xóa đợt.'); if (r) { periodEdit = null; renderSales(); } return; }
+        if (btn.dataset.pa === 'del') {
+          if (!window.confirm('Xóa đợt này khỏi bảng (ngày, số quả, thành tiền)? Số liệu từng ngày không bị ảnh hưởng.')) return;
+          // khoản thu đã ghi cho đợt này trong sổ thu: hỏi có xóa luôn không (tránh để sót khoản thu mồ côi)
+          const per = (fin.periods || []).find(x => x.row === row), had = per ? periodRecorded(per).had.filter(t => t.row > 0) : [];
+          const alsoThu = had.length > 0 && window.confirm(`Đợt này đã ghi ${had.length} khoản vào sổ thu (tổng ${revNum(sumBy(had, t => t.amount))} đ):\n` + had.slice(0, 6).map(t => `• ${t.date ? dmy(t.date) : (t.dateText || '')} · ${t.text} · ${revNum(t.amount)} đ`).join('\n') + '\n\nBấm OK để xóa luôn các khoản thu này khỏi sổ thu.\nBấm Hủy để giữ lại các khoản thu (chỉ xóa đợt).');
+          const backup = JSON.parse(JSON.stringify(fin.periods || [])), thuBackup = JSON.parse(JSON.stringify(fin.thu || []));
+          fin.periods = (fin.periods || []).filter(x => x.row !== row);
+          if (alsoThu) { const ids = new Set(had.map(t => t.row)); fin.thu = (fin.thu || []).filter(t => !ids.has(t.row)); }
+          periodEdit = null; renderSales(); renderAlt();
+          const r = await finCall({ action: 'periodClear', row }, $('periodMsg'), 'Đã xóa đợt.');
+          if (!r) { fin.periods = backup; fin.thu = thuBackup; renderSales(); renderAlt(); return; }
+          if (alsoThu) {
+            let bad = 0;
+            for (const t of had) { const rr = await finCall({ action: 'finClear', kind: 'thu', row: t.row }, $('periodMsg'), 'Đã xóa đợt và khoản thu liên quan.'); if (!rr) bad++; }
+            if (bad) { loadFin(); showToast(`Đã xóa đợt nhưng ${bad} khoản thu chưa xóa được, hãy xóa trong tab Thu chi.`, true); } else showToast(`Đã xóa đợt và ${had.length} khoản thu liên quan.`);
+          } else showToast('Đã xóa đợt.');
+          return;
+        }
         if (!f || !f.value) { altMsg($('periodMsg'), 'Hãy nhập ngày bắt đầu của đợt.', true); return; }
         if (t && t.value && t.value < f.value) { altMsg($('periodMsg'), 'Ngày kết thúc phải sau ngày bắt đầu.', true); return; }
         btn.disabled = true;
-        const pn = tr.querySelector('.pn');
-        const res = await finCall({ action: 'periodSet', row: row || undefined, from: f.value, to: t && t.value ? t.value : '', name: pn ? pn.value : undefined }, $('periodMsg'), btn.dataset.pa === 'add' ? 'Đã thêm đợt mới.' : 'Đã lưu đợt.');
-        btn.disabled = false;
-        if (res) { periodEdit = null; renderSales(); }
+        const pn = tr.querySelector('.pn'), fromV = f.value, toV = t && t.value ? t.value : '', nameV = pn ? pn.value.trim() : undefined;
+        // Hiện ngay kết quả (không bắt người dùng chờ Sheet ghi xong ~vài giây); nếu ghi lỗi thì hoàn lại
+        const backup = JSON.parse(JSON.stringify(fin.periods || [])), lab = d => d.slice(8) + '/' + d.slice(5, 7), label = lab(fromV) + '-' + (toV ? lab(toV) : '');
+        if (row) { const it = (fin.periods || []).find(x => x.row === row); if (it) { it.from = fromV; it.to = toV; it.open = !toV; it.label = label; if (nameV !== undefined) it.name = nameV; } }
+        else { const mx = Math.max(0, ...(fin.periods || []).map(x => Number(x.stt) || 0)); fin.periods = (fin.periods || []).concat({ row: -1, stt: String(mx + 1), label, qty: 0, amount: 0, name: nameV || '', from: fromV, to: toV, open: !toV }); }
+        periodEdit = null; renderSales();
+        const res = await finCall({ action: 'periodSet', row: row || undefined, from: fromV, to: toV, name: nameV }, $('periodMsg'), btn.dataset.pa === 'add' ? 'Đã thêm đợt mới.' : 'Đã lưu đợt.');
+        if (res) { showToast(btn.dataset.pa === 'add' ? 'Đã thêm đợt mới.' : 'Đã lưu đợt.'); }
+        else { fin.periods = backup; periodEdit = row || 0; renderSales(); }
       });
       $('salesBody').addEventListener('click', async event => {
         const btn = event.target.closest('button[data-sa]'); if (!btn || !isAdmin()) return;
@@ -2763,6 +2792,15 @@
         const kind = $('fKind').value, payload = { action: finEditRow ? 'finEdit' : 'finAdd', kind, date: $('fDate').value, text: $('fText').value, amount: Number($('fAmount').value), cat: kind === 'chi' ? $('fCat').value : '' };
         if (finEditRow) payload.row = finEditRow;
         $('fSave').disabled = true;
+        if (!finEditRow) {   // thêm mới: hiện ngay trong danh sách, không chờ Sheet ghi xong (lỗi thì gỡ lại và trả nội dung vào ô nhập)
+          const tmp = -Date.now(), d = payload.date, kept = { date: payload.date, text: payload.text, amount: $('fAmount').value, cat: payload.cat };
+          fin[kind] = (fin[kind] || []).concat({ row: tmp, date: d, dateText: d.split('-').reverse().join('/'), text: payload.text, amount: Math.round(payload.amount) || 0, cat: payload.cat });
+          finKind = kind; $('finKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === kind)); resetFinForm(); renderAlt();
+          const r0 = await finCall(payload, $('finMsg'), 'Đã thêm vào sổ.', tmp);
+          if (r0) showToast('Đã thêm khoản ' + (kind === 'thu' ? 'thu' : 'chi') + ' vào sổ.');
+          else { $('fDate').value = kept.date; $('fText').value = kept.text; $('fAmount').value = kept.amount; if (kind === 'chi') $('fCat').value = kept.cat; renderAlt(); showToast('Chưa ghi được: ' + ($('finMsg').textContent || 'hãy thử lại.'), true); }
+          $('fSave').disabled = false; return;
+        }
         const wasEdit = !!finEditRow, res = await finCall(payload, $('finMsg'), wasEdit ? 'Đã cập nhật khoản này.' : 'Đã thêm vào sổ.');
         if (res) showToast(wasEdit ? 'Đã cập nhật khoản này.' : 'Đã thêm khoản ' + (kind === 'thu' ? 'thu' : 'chi') + ' vào sổ.');
         if (res) { finKind = kind; $('finKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === kind)); resetFinForm(); }
