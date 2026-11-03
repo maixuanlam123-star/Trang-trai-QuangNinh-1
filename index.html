@@ -1732,7 +1732,7 @@
       const monthLabel = ym => ym.slice(5) + '/' + ym.slice(2, 4);
       const addDaysIso = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
       const isEggSale = r => /\d[\d.,]*\s*q\b/i.test(r.text || '');   // "514,730q (21/09 - 04/10) ..." = tiền bán trứng
-      const CAT_COLORS = ['#d04a25', '#eab308', '#1f9d55', '#7a8594', '#b5391c', '#2f7fc1', '#8a5a2b', '#9b59b6', '#e67e22', '#16a085', '#c0a98a'];
+      const CAT_COLORS = ['#d04a25', '#eab308', '#1f9d55', '#7a8594', '#b5391c', '#2f7fc1', '#8a5a2b', '#9b59b6', '#e67e22', '#16a085', '#c0a98a', '#34495e'];
 
       function loadFinCache() { try { const c = JSON.parse(localStorage.getItem(FIN_KEY)); if (c && Array.isArray(c.sales)) fin = { ...fin, ...c, loaded: true }; } catch (_) { /* bỏ qua */ } }
       function clearFin() { fin = { sales: [], chi: [], thu: [], holders: [], loaded: false, error: '' }; try { localStorage.removeItem(FIN_KEY); } catch (_) { /* bỏ qua */ } }
@@ -2004,11 +2004,11 @@
         $('finWarn').hidden = !warn.length; $('finWarn').innerHTML = warn.map(escapeHtml).join('<br>');
         // chi theo mục (biểu đồ tròn)
         const cats = new Map(); cIn.forEach(r => { const k = r.cat || '(chưa phân loại)'; cats.set(k, (cats.get(k) || 0) + r.amount); });
-        const sorted = [...cats.entries()].sort((a, b) => b[1] - a[1]); const top = sorted.slice(0, 8), rest = sumBy(sorted.slice(8), x => x[1]); if (rest) top.push(['Mục khác', rest]);
+        const isOther = k => /^chi ph[ií] kh[aá]c$/i.test(String(k).trim()), sorted = [...cats.entries()].sort((a, b) => (isOther(a[0]) - isOther(b[0])) || b[1] - a[1]); const CAT_MAX = 12, top = sorted.length <= CAT_MAX ? sorted.slice() : sorted.slice(0, CAT_MAX - 1), rest = sorted.length <= CAT_MAX ? 0 : sumBy(sorted.slice(CAT_MAX - 1), x => x[1]);   // hiện đủ từng mục (kể cả lương nhân công), chỉ gộp khi quá 12 mục if (rest) top.push(['Mục khác', rest]);
         $('catNote').textContent = `${sorted.length} mục · ${rg ? rg.label : 'toàn bộ sổ'}`;
         $('finCatChart').innerHTML = donutSvg(top.map(([k, v], i) => ({ label: k, value: v, color: CAT_COLORS[i % CAT_COLORS.length] })), { fmt: moneyFull, aria: 'Chi theo mục', center: 'Tổng chi' });
         // vốn góp
-        const hs = fin.holders, tot = sumBy(hs, h => h.total);
+        const hs = fin.holders.slice().sort((a, b) => b.total - a.total), tot = sumBy(hs, h => h.total);   // người góp nhiều xếp trước
         $('holdCard').hidden = !hs.length;
         if (hs.length) {
           $('holdNote').textContent = `Tổng ${moneyFull(tot)}`;
@@ -2035,7 +2035,7 @@
         const rows = finFiltered(), pages = Math.max(1, Math.ceil(rows.length / PAGE)), admin = isAdmin(), isChi = finKind === 'chi';
         finPage = Math.min(Math.max(1, finPage), pages); const shown = rows.slice((finPage - 1) * PAGE, finPage * PAGE);
         { const rgx = finPRange(); $('finSum').textContent = `${rows.length} khoản · tổng ${vnd(sumBy(rows, r => r.amount))}` + (rgx ? ' · ' + rgx.label : ''); }
-        $('finBody').innerHTML = shown.map(r => `<tr class="${r.future ? 'bad' : ''} ${isChi ? 'k-chi' : 'k-thu'}"><td>${r.date ? dmyS(r.date) : escapeHtml(r.dateText || '—')}${r.future ? ' ⚠' : ''}</td><td>${escapeHtml(r.text)}${isChi ? `<div class="alt-note show-s-only">${escapeHtml(r.cat || '')}</div>` : ''}</td>${isChi ? `<td class="hide-s">${escapeHtml(r.cat || '—')}</td>` : '<td class="hide-s"></td>'}<td class="number ${isChi ? 'amt-chi' : 'amt-thu'}">${isChi ? '−' : '+'}${numberFormat.format(r.amount)}</td><td class="row-act admin-only"><button type="button" data-fa="edit" data-r="${r.row}">Sửa</button><button type="button" class="danger" data-fa="del" data-r="${r.row}">Xóa</button></td></tr>`).join('') || '<tr><td colspan="5" class="alt-note">Không có khoản nào.</td></tr>';
+        $('finBody').innerHTML = shown.map(r => `<tr class="${r.future ? 'bad' : ''} ${isChi ? 'k-chi' : 'k-thu'}"><td>${r.date ? dmyS(r.date) : escapeHtml(r.dateText || '—')}${r.future ? ' ⚠' : ''}</td><td>${escapeHtml(r.text)}${isChi ? `<div class="alt-note show-s-only">${escapeHtml(r.cat || '')}</div>` : ''}</td>${isChi ? `<td class="hide-s">${escapeHtml(r.cat || '—')}</td>` : ''}<td class="number ${isChi ? 'amt-chi' : 'amt-thu'}">${isChi ? '−' : '+'}${numberFormat.format(r.amount)}</td><td class="row-act admin-only"><button type="button" data-fa="edit" data-r="${r.row}">Sửa</button><button type="button" class="danger" data-fa="del" data-r="${r.row}">Xóa</button></td></tr>`).join('') || `<tr><td colspan="${isChi ? 5 : 4}" class="alt-note">Không có khoản nào.</td></tr>`;
         $('finPager').innerHTML = pagerHtml(finPage, pages, rows.length);
       }
       function renderAlt() { if (curView === 'sales') renderSales(); else if (curView === 'fin') renderFin(); else if (curView === 'lab') renderLab(); }
