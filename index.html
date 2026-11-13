@@ -751,7 +751,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-e</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-f</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1745,7 +1745,7 @@
       // ===== Hai trang mới: Xuất hàng và Thu chi (chỉ admin/viewer; chỉ admin ghi) =====
       const FIN_KEY = 'quan-ly-trai-ga-fin-v1';
       let curView = 'main', fin = { sales: [], chi: [], thu: [], holders: [], loaded: false, error: '' }, finBusy = false, finAgain = false;
-      const PAGE = 10; let salesPage = 1, finPage = 1, finKind = 'chi', finEditRow = 0, salesEditDate = '', finLoadedAt = 0;
+      let finAgainFresh = false; const PAGE = 10; let salesPage = 1, finPage = 1, finKind = 'chi', finEditRow = 0, salesEditDate = '', finLoadedAt = 0;
       const $ = id => document.querySelector('#' + id);
       const vnd = n => numberFormat.format(Math.round(n)) + ' đ';
       const moneyShort = n => { const a = Math.abs(n), s = n < 0 ? '−' : ''; const f = (v, d) => v.toFixed(d).replace('.', ',').replace(/,0+$/, '').replace(/(,\d)0$/, '$1'); return a >= 1e9 ? s + f(a / 1e9, 2) + ' tỷ' : a >= 1e6 ? s + f(a / 1e6, 1) + ' triệu' : s + numberFormat.format(a) + ' đ'; };
@@ -1761,12 +1761,12 @@
 
       function loadFinCache() { try { const c = JSON.parse(localStorage.getItem(FIN_KEY)); if (c && Array.isArray(c.sales)) fin = { ...fin, ...c, loaded: true }; } catch (_) { /* bỏ qua */ } }
       function clearFin() { fin = { sales: [], chi: [], thu: [], holders: [], loaded: false, error: '' }; try { localStorage.removeItem(FIN_KEY); } catch (_) { /* bỏ qua */ } }
-      async function loadFin() {
+      async function loadFin(fresh) {
         if (!syncReady() || !sync.role || isEntry()) return;
-        if (finBusy) { finAgain = true; return; }
+        if (finBusy) { finAgain = true; finAgainFresh = finAgainFresh || !!fresh; return; }
         finBusy = true;
         try {
-          const data = await callScript({ action: 'finList' });
+          const data = await callScript(fresh ? { action: 'finList', fresh: true } : { action: 'finList' });
           fin = { sales: data.sales || [], periods: data.periods || [], periodTotal: data.periodTotal || null, chi: data.chi || [], thu: data.thu || [], holders: data.holders || [], sheetTotals: data.sheetTotals || null, loaded: true, error: '' };
           applySalesPatches(); finLoadedAt = Date.now();
           try { localStorage.setItem(FIN_KEY, JSON.stringify(fin)); } catch (_) { /* bỏ qua */ }
@@ -1775,7 +1775,7 @@
           fin.error = String(error && error.message || error);
         }
         finBusy = false; renderAlt();
-        if (finAgain) { finAgain = false; loadFin(); }
+        if (finAgain) { const fr = finAgainFresh; finAgain = false; finAgainFresh = false; loadFin(fr); }
       }
       function finGuard(el, text) { if (!fin.loaded) { el.innerHTML = `<p class="alt-note">${escapeHtml(fin.error || text || 'Đang tải số liệu…')}</p>`; return true; } return false; }
 
@@ -2902,7 +2902,10 @@
         if (!window.confirm(`Xóa khoản "${item.text}" (${numberFormat.format(item.amount)} đ)? Ô trong Sheet sẽ để trống (hàng vẫn giữ để không lệch công thức).`)) return;
         await finCall({ action: 'finClear', kind: finKind, row }, $('finMsg'), 'Đã xóa khoản này.');
       });
-      setInterval(() => { if ((curView === 'sales' || curView === 'fin') && !document.hidden && !finEditRow && !salesEditDate && periodEdit === null && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#periodBody, #salesBody, #finForm'))) loadFin(); }, 60000);
+      setInterval(() => { if ((curView === 'sales' || curView === 'fin') && !document.hidden && !finEditRow && !salesEditDate && periodEdit === null && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#periodBody, #salesBody, #finForm'))) loadFin(); }, 20000);
+      // quay lại app (ví dụ vừa sửa bên Google Sheet): đọc lại Sheet ngay, bỏ qua bộ nhớ đệm
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && (curView === 'sales' || curView === 'fin') && !finEditRow && !salesEditDate && periodEdit === null) loadFin(true); });
+      window.addEventListener('focus', () => { if ((curView === 'sales' || curView === 'fin') && !finEditRow && !salesEditDate && periodEdit === null && Date.now() - finLoadedAt > 3000) loadFin(true); });
       setInterval(() => { if (curView === 'lab' && !document.hidden && $('labModal').hidden && !labBusyRead) loadLab(); }, 60000);
       let reportOn = false, rateRange = 30, rateHover = -1, rateGeo = null;
       const RC = { rate: '#1f9d55', avg: '#7a8594', min: '#f0a30a', std: '#7b8794' };
@@ -3549,7 +3552,7 @@
           setSyncMessage(isAuthError(error) ? 'Mã đăng nhập không đúng.' : `Không kết nối được: ${error.message}`, true);
         }
       });
-      syncEls.refresh.addEventListener('click', () => pullSync(true));
+      syncEls.refresh.addEventListener('click', () => { pullSync(true); loadFin(true); });
       syncEls.logout.addEventListener('click', () => {
         if (Object.keys(sync.pending).length && !window.confirm('Còn số liệu chưa gửi lên Google Sheet và sẽ mất nếu đăng xuất. Vẫn đăng xuất?')) return;
         forceLogout(''); setSyncMessage('Đã đăng xuất.', false);
