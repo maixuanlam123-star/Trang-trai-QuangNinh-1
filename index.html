@@ -751,7 +751,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-d</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-e</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1768,7 +1768,7 @@
         try {
           const data = await callScript({ action: 'finList' });
           fin = { sales: data.sales || [], periods: data.periods || [], periodTotal: data.periodTotal || null, chi: data.chi || [], thu: data.thu || [], holders: data.holders || [], sheetTotals: data.sheetTotals || null, loaded: true, error: '' };
-          finLoadedAt = Date.now();
+          applySalesPatches(); finLoadedAt = Date.now();
           try { localStorage.setItem(FIN_KEY, JSON.stringify(fin)); } catch (_) { /* bỏ qua */ }
         } catch (error) {
           if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); finBusy = false; return; }
@@ -2682,15 +2682,35 @@
           loadFin(); return r; }
         catch (error) { dropTemp(); if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
       }
+      // ---------- sửa giá: hiện NGAY trên màn hình, ghi vào Sheet ở nền; lỗi thì hoàn lại ----------
+      let salesPatches = [];   // các thay đổi chưa được Sheet xác nhận: [{ id, apply(rows) }]
+      function applySalesPatches() { salesPatches.forEach(p => { try { p.apply(fin.sales || []); } catch (_) { /* bỏ qua */ } }); }
+      function salesWrite(payload, apply, okText) {
+        const backup = JSON.parse(JSON.stringify(fin.sales || [])), patch = { apply };
+        salesPatches.push(patch); apply(fin.sales || []); salesEditDate = ''; renderSales();
+        altMsg($('priceMsg'), okText + ' Đang lưu vào Sheet…');
+        const drop = () => { salesPatches = salesPatches.filter(p => p !== patch); };
+        return callScript(payload).then(res => {
+          drop(); altMsg($('priceMsg'), okText + ' Đã lưu vào Sheet.');
+          if (res && res.missing && res.missing.length) altMsg($('priceMsg'), `${okText} Sheet chưa có dòng cho ${res.missing.length} ngày nên chưa ghi được các ngày đó.`, true);
+          loadFin(); return res;
+        }).catch(error => {
+          drop();
+          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; }
+          if (!salesPatches.length) fin.sales = backup; applySalesPatches(); renderSales(); loadFin();
+          altMsg($('priceMsg'), 'Không ghi được, đã hoàn lại giá cũ: ' + (error && error.message || error), true); showToast('Không ghi được giá vào Sheet. Đã hoàn lại.');
+          return null;
+        });
+      }
+      const priceNum = v => { const n = Number(v); return v === '' || v === undefined || v === null || !isFinite(n) || n < 0 ? null : Math.round(n); };
       $('priceForm').addEventListener('submit', async event => {
         event.preventDefault(); if (!isAdmin()) return;
         const w = $('pWhite').value, r = $('pRed').value, a = $('pFrom').value, b = $('pTo').value;
         if (w === '' && r === '') { altMsg($('priceMsg'), 'Hãy nhập ít nhất một loại giá.', true); return; }
         if (!window.confirm(`Đặt giá${w !== '' ? ' trứng trắng ' + numberFormat.format(Number(w)) + ' đ' : ''}${r !== '' ? ' trứng đỏ ' + numberFormat.format(Number(r)) + ' đ' : ''} cho các ngày từ ${dmy(a)} đến ${dmy(b)}? Giá cũ trong khoảng này sẽ bị thay.`)) return;
-        $('pSave').disabled = true;
-        const res = await finCall({ action: 'salesSet', range: { from: a, to: b }, price: w === '' ? undefined : Number(w), redPrice: r === '' ? undefined : Number(r) }, $('priceMsg'));
-        if (res) altMsg($('priceMsg'), `Đã cập nhật giá cho ${res.updated} ngày.`);
-        $('pSave').disabled = false;
+        const pw = priceNum(w), pr = priceNum(r), hit = (fin.sales || []).filter(x => x.date >= a && x.date <= b).length;
+        salesWrite({ action: 'salesSet', range: { from: a, to: b }, price: w === '' ? undefined : Number(w), redPrice: r === '' ? undefined : Number(r) },
+          rows => rows.forEach(x => { if (x.date >= a && x.date <= b) { if (pw !== null) x.price = pw; if (pr !== null) x.redPrice = pr; } }), `Đã cập nhật giá cho ${hit} ngày.`);
       });
       // xem trước số quả / thành tiền ngay khi đổi ngày (chưa ghi vào Sheet, bấm Lưu mới ghi)
       // ---------- ghi tiền một đợt xuất vào sổ thu ----------
@@ -2822,15 +2842,16 @@
         if (btn.dataset.sa === 'cancel') { salesEditDate = ''; renderSales(); return; }
         if (btn.dataset.sa === 'del') {
           if (!window.confirm(`Xóa đơn giá và số trứng vỡ của ngày ${dmy(btn.dataset.d)}? Số lượng trứng lấy từ tab trứng được giữ nguyên.`)) return;
-          const res0 = await finCall({ action: 'salesSet', rows: [{ date: btn.dataset.d, clear: true }] }, $('priceMsg'), 'Đã xóa giá ngày ' + dmy(btn.dataset.d) + '.');
-          if (res0) { salesEditDate = ''; renderSales(); showToast('Đã xóa giá ngày ' + dmy(btn.dataset.d) + '.'); }
+          const dd = btn.dataset.d;
+          salesWrite({ action: 'salesSet', rows: [{ date: dd, clear: true }] }, rows => rows.forEach(x => { if (x.date === dd) { x.price = 0; x.redPrice = 0; x.broken = 0; } }), 'Đã xóa giá ngày ' + dmy(dd) + '.');
           return;
         }
         const val = id => { const el = $(id); return el ? el.value : undefined; }, row = { date: btn.dataset.d, price: val('sePrice'), redPrice: val('seRedPrice'), broken: val('seBroken'), qty: val('seQty'), red: val('seRed') };
         Object.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });
-        btn.disabled = true;
-        const res = await finCall({ action: 'salesSet', rows: [row] }, $('priceMsg'), 'Đã lưu ngày ' + dmy(btn.dataset.d) + '.');
-        if (res) salesEditDate = ''; btn.disabled = false; renderSales();
+        const sd = btn.dataset.d, np = priceNum(row.price), nr = priceNum(row.redPrice), nb = priceNum(row.broken), nq = priceNum(row.qty), nrd = priceNum(row.red);
+        salesWrite({ action: 'salesSet', rows: [row] }, rows => rows.forEach(x => { if (x.date !== sd) return;
+          if (np !== null) x.price = np; if (nr !== null) x.redPrice = nr; if (row.broken !== undefined && nb !== null) x.broken = nb;
+          if (row.qty !== undefined && nq !== null && !x.qtyLinked) x.qty = nq; if (row.red !== undefined && nrd !== null && !x.redLinked) x.red = nrd; }), 'Đã lưu ngày ' + dmy(sd) + '.');
       });
       $('salesPager').addEventListener('click', event => { const b = event.target.closest('button[data-p]'); if (!b) return; const pages = Math.max(1, Math.ceil(salesRows().length / PAGE)); salesPage = pageMove(salesPage, pages, b.dataset.p); salesEditDate = ''; renderSales(); $('salesBody').closest('article').scrollIntoView({ block: 'start' }); });
       $('finPager').addEventListener('click', event => { const b = event.target.closest('button[data-p]'); if (!b) return; const pages = Math.max(1, Math.ceil(finFiltered().length / PAGE)); finPage = pageMove(finPage, pages, b.dataset.p); renderFinTable(); $('finBody').closest('article').scrollIntoView({ block: 'start' }); });
