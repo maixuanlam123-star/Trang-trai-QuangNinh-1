@@ -751,7 +751,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-c</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-d</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1872,7 +1872,7 @@
       // ---------- trang Xuất hàng ----------
       function salesRows() {
         const today = serverToday();
-        return fin.sales.filter(r => r.date <= today && (r.qty > 0 || r.red > 0 || r.price > 0 || r.redPrice > 0)).sort((a, b) => a.date.localeCompare(b.date)).map(r => {
+        return fin.sales.filter(r => r.date <= today ? (r.qty > 0 || r.red > 0 || r.price > 0 || r.redPrice > 0) : r.price > 0).sort((a, b) => a.date.localeCompare(b.date)).map(r => {
           const w = r.qty * r.price, rd = r.red * r.redPrice;
           return { ...r, wMoney: w, rMoney: rd, total: w + rd, noPrice: r.qty > 0 && !r.price };
         });
