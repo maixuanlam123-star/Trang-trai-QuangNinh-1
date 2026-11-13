@@ -233,6 +233,7 @@
     body.locked .data-only, body.locked .logged-only { display: none !important; }
     body:not(.is-admin) .admin-only { display: none !important; }
     body.is-admin .viewer-only { display: none !important; }
+    body.is-mgr #accessOpen { display: none !important; }
     .rec-badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 800; white-space: nowrap; line-height: 1.3; }
     .rec-badge.done { background: #e8f5ec; color: #1b7a44; border: 1px solid #b9dfc6; }
     .rec-badge.part { background: #fff8e1; color: #7a5c00; border: 1px solid #ecd08a; }
@@ -750,7 +751,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-c</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1871,7 +1872,7 @@
       // ---------- trang Xuất hàng ----------
       function salesRows() {
         const today = serverToday();
-        return fin.sales.filter(r => r.date <= today && (r.qty > 0 || r.red > 0)).sort((a, b) => a.date.localeCompare(b.date)).map(r => {
+        return fin.sales.filter(r => r.date <= today && (r.qty > 0 || r.red > 0 || r.price > 0 || r.redPrice > 0)).sort((a, b) => a.date.localeCompare(b.date)).map(r => {
           const w = r.qty * r.price, rd = r.red * r.redPrice;
           return { ...r, wMoney: w, rMoney: rd, total: w + rd, noPrice: r.qty > 0 && !r.price };
         });
@@ -2746,7 +2747,7 @@
           altMsg($('accessMsg'), /không hợp lệ|thao tác/i.test(error.message) ? 'Script trên Google chưa phải bản mới nhất: hãy dán lại Code.gs và triển khai phiên bản mới.' : 'Không tải được: ' + error.message, true);
         }
       }
-      $('accessOpen').addEventListener('click', () => { if (!isAdmin()) return; accessPage = 1; $('accessModal').hidden = false; setMenu(false); loadAccess(); });
+      $('accessOpen').addEventListener('click', () => { if (!canSeeLog()) return; accessPage = 1; $('accessModal').hidden = false; setMenu(false); loadAccess(); });
       const closeAccess = () => { $('accessModal').hidden = true; };
       $('accessClose').addEventListener('click', closeAccess); $('accessModal').addEventListener('click', e => { if (e.target === $('accessModal')) closeAccess(); });
       $('accessRefresh').addEventListener('click', () => { accessPage = 1; loadAccess(); });
@@ -3332,7 +3333,7 @@
       const SYNC_KEY = 'quan-ly-trai-ga-sync-v3';
       const POLL_MS = 45000;
       const syncEls = { body: document.querySelector('#syncBody'), toggle: document.querySelector('#syncToggle'), url: document.querySelector('#syncUrl'), token: document.querySelector('#syncToken'), login: document.querySelector('#syncSaveButton'), all: document.querySelector('#syncAllButton'), refresh: document.querySelector('#syncRefreshButton'), logout: document.querySelector('#logoutButton'), status: document.querySelector('#syncStatus'), message: document.querySelector('#syncMessage') };
-      let sync = { url: '', token: '', role: '', name: '', today: '', flockPending: false, pending: {} };
+      let sync = { url: '', token: '', role: '', mgr: false, name: '', today: '', flockPending: false, pending: {} };
       let syncing = false, pulling = false, changeStamp = 0;
       let lockedDates = [];   // các ngày đã được duyệt/ghi vào sổ (tài khoản nhập liệu không sửa được)
       let subs = [];   // số liệu nhập liệu đã gửi, đang chờ quản trị viên duyệt
@@ -3341,14 +3342,15 @@
       syncEls.toggle.addEventListener('click', () => setSyncOpen(syncEls.body.hidden));
       syncEls.toggle.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSyncOpen(syncEls.body.hidden); } });
       function isAdmin() { return sync.role === 'admin'; }
+      function canSeeLog() { return sync.role === 'admin' && !sync.mgr; }
       function isEntry() { return sync.role === 'entry'; }
       function canWrite() { return sync.role === 'admin' || sync.role === 'entry'; }
       function serverToday() { return /^\d{4}-\d{2}-\d{2}$/.test(sync.today || '') ? sync.today : todayIso(); }
-      function roleLabel() { return sync.role === 'admin' ? `Quản trị${sync.name && sync.name !== 'Quản trị' ? ' · ' + sync.name : ''}` : sync.role === 'viewer' ? `Chỉ xem${sync.name ? ' · ' + sync.name : ''}` : sync.role === 'entry' ? `Nhập liệu${sync.name ? ' · ' + sync.name : ''}` : 'Chưa đăng nhập'; }
+      function roleLabel() { return sync.role === 'admin' ? `${sync.mgr ? 'Quản lý' : 'Quản trị'}${sync.name && sync.name !== 'Quản trị' && sync.name !== 'Quản lý' ? ' · ' + sync.name : ''}` : sync.role === 'viewer' ? `Chỉ xem${sync.name ? ' · ' + sync.name : ''}` : sync.role === 'entry' ? `Nhập liệu${sync.name ? ' · ' + sync.name : ''}` : 'Chưa đăng nhập'; }
       let formRoleSeen = '__none__';
       function applyRole() {
         const cls = document.body.classList;
-        cls.toggle('locked', !sync.role); cls.toggle('is-admin', sync.role === 'admin'); cls.toggle('is-viewer', sync.role === 'viewer'); cls.toggle('is-entry', sync.role === 'entry'); cls.toggle('has-menu', !!sync.role && sync.role !== 'entry');
+        cls.toggle('locked', !sync.role); cls.toggle('is-admin', sync.role === 'admin'); cls.toggle('is-mgr', !!sync.mgr); cls.toggle('is-viewer', sync.role === 'viewer'); cls.toggle('is-entry', sync.role === 'entry'); cls.toggle('has-menu', !!sync.role && sync.role !== 'entry');
         els.storageNote.textContent = roleLabel();
         if (curView !== 'main' && (!sync.role || isEntry())) { curView = 'main'; reportOn = false; ['view-report', 'view-sales', 'view-fin', 'view-lab'].forEach(c => document.body.classList.remove(c)); paintNav(); setMenu(false); }
         if (isAdmin() && $('fDate') && !$('fDate').value) $('fDate').value = serverToday();
@@ -3363,7 +3365,7 @@
       function loadSync() {
         try {
           const saved = JSON.parse(localStorage.getItem(SYNC_KEY));
-          if (saved && typeof saved === 'object') sync = { url: String(saved.url || ''), token: String(saved.token || ''), role: ['admin', 'viewer', 'entry'].includes(saved.role) ? saved.role : '', name: String(saved.name || ''), today: String(saved.today || ''), flockPending: !!saved.flockPending, pending: saved.pending && typeof saved.pending === 'object' ? saved.pending : {} };
+          if (saved && typeof saved === 'object') sync = { url: String(saved.url || ''), token: String(saved.token || ''), role: ['admin', 'viewer', 'entry'].includes(saved.role) ? saved.role : '', mgr: !!saved.mgr, name: String(saved.name || ''), today: String(saved.today || ''), flockPending: !!saved.flockPending, pending: saved.pending && typeof saved.pending === 'object' ? saved.pending : {} };
         } catch (_) { /* dùng cấu hình mặc định */ }
         if (!sync.token) sync.role = '';
         if (!sync.url && DEFAULT_SYNC_URL) sync.url = DEFAULT_SYNC_URL;
@@ -3406,7 +3408,7 @@
 
       // Xóa phiên đăng nhập và số liệu lưu tạm trên máy này
       function forceLogout(message) {
-        sync.role = ''; sync.name = ''; sync.token = ''; sync.pending = {}; sync.flockPending = false; subs = [];
+        sync.role = ''; sync.mgr = false; sync.name = ''; sync.token = ''; sync.pending = {}; sync.flockPending = false; subs = [];
         clearFin(); clearLab(); try { accessRows = []; $('accessModal').hidden = true; } catch (_) { /* chưa khởi tạo */ }
         state = { version: DATA_VERSION, initialFlock: 0, records: [], alerts: { ...DEFAULT_ALERTS } }; saveState(); saveSync();
         editingDate = null; syncEls.token.value = '';
@@ -3516,10 +3518,10 @@
           const result = await callScript({ action: 'login' });
           // Đổi người đăng nhập: bỏ số liệu tạm của người trước
           state = { version: DATA_VERSION, initialFlock: 0, records: [], alerts: { ...DEFAULT_ALERTS } };
-          sync.role = ['admin', 'entry'].includes(result.role) ? result.role : 'viewer'; sync.name = String(result.name || ''); sync.today = String(result.today || ''); sync.pending = {}; sync.flockPending = false; subs = []; saveState(); saveSync();
+          sync.role = ['admin', 'entry'].includes(result.role) ? result.role : 'viewer'; sync.mgr = sync.role === 'admin' && !!result.mgr; sync.name = String(result.name || ''); sync.today = String(result.today || ''); sync.pending = {}; sync.flockPending = false; subs = []; saveState(); saveSync();
           applyRole(); resetForm(); render(); refreshSyncStatus();
           if (sync.role === 'admin' && window.Notification && Notification.permission === 'default') { try { Notification.requestPermission(); } catch (_) { /* bỏ qua */ } }
-          setSyncMessage(`Đã đăng nhập với quyền ${sync.role === 'admin' ? 'quản trị' : sync.role === 'entry' ? 'nhập liệu' : 'chỉ xem'}. Đang tải số liệu…`, false);
+          setSyncMessage(`Đã đăng nhập với quyền ${sync.role === 'admin' ? (sync.mgr ? 'quản lý' : 'quản trị') : sync.role === 'entry' ? 'nhập liệu' : 'chỉ xem'}. Đang tải số liệu…`, false);
           await pullSync(true);
         } catch (error) {
           sync.role = ''; sync.token = isAuthError(error) ? '' : sync.token; saveSync(); applyRole(); setSyncStatus('Chưa đăng nhập', 'error');
