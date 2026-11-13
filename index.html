@@ -627,6 +627,10 @@
     .acc-kind { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700; background: #eef1ee; color: #455; } .acc-kind.in { background: #e3f4e8; color: #17703a; } .acc-kind.bad { background: #fdeaea; color: #b3261e; }
     .rev-card { width: min(520px, 100%); }
     .rev-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .se-del { color: #b3261e; }
+    .rev-fields .se-ro { display: grid; gap: 5px; font-weight: 700; font-size: .85rem; color: #6b5442; }
+    .rev-fields .se-ro b { padding: 9px 10px; border: 1px dashed var(--line); border-radius: 10px; background: #faf5ee; color: #2b1f17; font-weight: 700; }
+    .rev-fields .se-ro small { font-weight: 500; color: #8a7767; }
     .rev-fields label { display: grid; gap: 5px; font-weight: 700; font-size: .85rem; color: #6b5442; }
     .rev-fields input { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #2b1f17; font-weight: 500; }
     .rev-fields .rev-wide { grid-column: 1 / -1; }
@@ -751,7 +755,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-f</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 13/11/2026-g</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1150,6 +1154,17 @@
         <p class="rev-note" id="revNote"></p>
         <p class="alt-note" id="revMsg" role="status"></p>
         <div class="apv-actions"><button type="submit" class="button button-primary" id="revSave">Ghi vào sổ thu</button><button type="button" class="button button-plain" id="revCancel">Hủy</button></div>
+      </form>
+    </div>
+
+    <div class="modal modal-center" id="seModal" hidden>
+      <form class="modal-card rev-card" id="seForm" role="dialog" aria-modal="true" aria-labelledby="seTitle">
+        <button type="button" class="modal-close" id="seClose" aria-label="Đóng">✕</button>
+        <h2 id="seTitle">Sửa xuất hàng</h2>
+        <p class="modal-sub" id="seInfo"></p>
+        <div class="fields rev-fields" id="seFields"></div>
+        <p class="rev-note" id="seTotal"></p>
+        <div class="apv-actions"><button type="submit" class="button button-primary" data-sa="save" id="seSave">Lưu</button><button type="button" class="button button-plain" data-sa="cancel">Hủy</button><button type="button" class="button button-plain se-del" data-sa="del" id="seDel">Xóa giá</button></div>
       </form>
     </div>
 
@@ -1998,10 +2013,6 @@
         salesPage = Math.min(Math.max(1, salesPage), pages); const shown = list.slice((salesPage - 1) * PAGE, salesPage * PAGE);
         $('salesCount').textContent = `${rows.length} ngày`;
         $('salesBody').innerHTML = shown.map(r => {
-          if (admin && salesEditDate === r.date) {
-            const q = r.qtyLinked ? numberFormat.format(r.qty) : `<input type="number" id="seQty" min="0" value="${r.qty}">`, rd = r.redLinked ? numberFormat.format(r.red) : `<input type="number" id="seRed" min="0" value="${r.red || ''}">`;
-            return `<tr><td>${dmyS(r.date)}</td><td class="number">${q}</td><td class="number"><input type="number" id="sePrice" min="0" step="50" value="${r.price || ''}"></td><td class="number hide-s">${rd}</td><td class="number hide-s"><input type="number" id="seRedPrice" min="0" step="50" value="${r.redPrice || ''}"></td><td class="number hide-s"><input type="number" id="seBroken" min="0" value="${r.broken || ''}"></td><td class="number">—</td><td class="row-act admin-only"><button type="button" class="ok" data-sa="save" data-d="${r.date}">Lưu</button><button type="button" data-sa="cancel">Hủy</button><button type="button" class="danger" data-sa="del" data-d="${r.date}">Xóa</button></td></tr>`;
-          }
           return `<tr class="${r.noPrice ? 'nop' : ''}"><td>${dmyS(r.date)}</td><td class="number">${numberFormat.format(r.qty)}</td><td class="number">${r.price ? numberFormat.format(r.price) : '—'}</td><td class="number hide-s">${r.red ? numberFormat.format(r.red) : '—'}</td><td class="number hide-s">${r.redPrice ? numberFormat.format(r.redPrice) : '—'}</td><td class="number hide-s">${r.broken ? numberFormat.format(r.broken) : '—'}</td><td class="number tot">${r.noPrice ? 'Chưa có giá' : numberFormat.format(r.total)}</td><td class="row-act admin-only"><button type="button" data-sa="edit" data-d="${r.date}">Sửa</button></td></tr>`;
         }).join('') || '<tr><td colspan="8" class="alt-note">Chưa có số liệu xuất hàng.</td></tr>';
         $('salesPager').innerHTML = pagerHtml(salesPage, pages, list.length);
@@ -2836,23 +2847,52 @@
         if (res) { showToast(btn.dataset.pa === 'add' ? 'Đã thêm đợt mới.' : 'Đã lưu đợt.'); }
         else { fin.periods = backup; periodEdit = row || 0; renderSales(); }
       });
-      $('salesBody').addEventListener('click', async event => {
+      // ---------- sửa một ngày xuất hàng trong cửa sổ nổi ----------
+      function closeSe() { $('seModal').hidden = true; salesEditDate = ''; }
+      function seTotalShow() {
+        const r = salesRows().find(x => x.date === salesEditDate) || (fin.sales || []).find(x => x.date === salesEditDate); if (!r) return;
+        const v = (id, d) => { const el = $(id); if (!el) return d; return el.value === '' ? (id === 'sePrice' || id === 'seRedPrice' ? d : 0) : Number(el.value) || 0; };
+        const w = v('seQty', r.qty) * v('sePrice', r.price), rd = v('seRed', r.red) * v('seRedPrice', r.redPrice);
+        $('seTotal').textContent = `Thành tiền: trắng ${numberFormat.format(Math.round(w))} đ + đỏ ${numberFormat.format(Math.round(rd))} đ = ${numberFormat.format(Math.round(w + rd))} đ`;
+      }
+      function openSe(date) {
+        const r = (fin.sales || []).find(x => x.date === date); if (!r) return;
+        salesEditDate = date;
+        const ro = (label, val) => `<div class="se-ro">${label}<b>${numberFormat.format(val || 0)} <small>· tự lấy từ tab Trang trại</small></b></div>`;
+        $('seInfo').textContent = 'Ngày ' + dmy(date);
+        $('seFields').innerHTML =
+          (r.qtyLinked ? ro('Trứng trắng (quả)', r.qty) : `<label>Trứng trắng (quả)<input type="number" id="seQty" min="0" inputmode="numeric" value="${r.qty || ''}"></label>`) +
+          `<label>Giá trứng trắng (đ/quả)<input type="number" id="sePrice" min="0" step="50" inputmode="numeric" value="${r.price || ''}"></label>` +
+          (r.redLinked ? ro('Trứng đỏ (quả)', r.red) : `<label>Trứng đỏ (quả)<input type="number" id="seRed" min="0" inputmode="numeric" value="${r.red || ''}"></label>`) +
+          `<label>Giá trứng đỏ (đ/quả)<input type="number" id="seRedPrice" min="0" step="50" inputmode="numeric" value="${r.redPrice || ''}"></label>` +
+          `<label class="rev-wide">Trứng vỡ (quả)<input type="number" id="seBroken" min="0" inputmode="numeric" value="${r.broken || ''}"></label>`;
+        ['seSave', 'seDel'].forEach(id => { $(id).dataset.d = date; });
+        seTotalShow(); $('seModal').hidden = false; $('sePrice').focus(); $('sePrice').select();
+      }
+      $('seFields').addEventListener('input', seTotalShow);
+      $('seClose').addEventListener('click', closeSe);
+      $('seModal').addEventListener('click', e => { if (e.target === $('seModal')) closeSe(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('seModal').hidden) closeSe(); });
+      $('seForm').addEventListener('submit', e => { e.preventDefault(); });
+      const onSalesAct = async event => {
         const btn = event.target.closest('button[data-sa]'); if (!btn || !isAdmin()) return;
-        if (btn.dataset.sa === 'edit') { salesEditDate = btn.dataset.d; renderSales(); return; }
-        if (btn.dataset.sa === 'cancel') { salesEditDate = ''; renderSales(); return; }
+        if (btn.dataset.sa === 'edit') { openSe(btn.dataset.d); return; }
+        if (btn.dataset.sa === 'cancel') { closeSe(); return; }
+        if (btn.dataset.sa === 'save' && !$('seForm').reportValidity()) return;
         if (btn.dataset.sa === 'del') {
           if (!window.confirm(`Xóa đơn giá và số trứng vỡ của ngày ${dmy(btn.dataset.d)}? Số lượng trứng lấy từ tab trứng được giữ nguyên.`)) return;
           const dd = btn.dataset.d;
-          salesWrite({ action: 'salesSet', rows: [{ date: dd, clear: true }] }, rows => rows.forEach(x => { if (x.date === dd) { x.price = 0; x.redPrice = 0; x.broken = 0; } }), 'Đã xóa giá ngày ' + dmy(dd) + '.');
+          closeSe(); salesWrite({ action: 'salesSet', rows: [{ date: dd, clear: true }] }, rows => rows.forEach(x => { if (x.date === dd) { x.price = 0; x.redPrice = 0; x.broken = 0; } }), 'Đã xóa giá ngày ' + dmy(dd) + '.');
           return;
         }
         const val = id => { const el = $(id); return el ? el.value : undefined; }, row = { date: btn.dataset.d, price: val('sePrice'), redPrice: val('seRedPrice'), broken: val('seBroken'), qty: val('seQty'), red: val('seRed') };
         Object.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });
         const sd = btn.dataset.d, np = priceNum(row.price), nr = priceNum(row.redPrice), nb = priceNum(row.broken), nq = priceNum(row.qty), nrd = priceNum(row.red);
-        salesWrite({ action: 'salesSet', rows: [row] }, rows => rows.forEach(x => { if (x.date !== sd) return;
+        closeSe(); salesWrite({ action: 'salesSet', rows: [row] }, rows => rows.forEach(x => { if (x.date !== sd) return;
           if (np !== null) x.price = np; if (nr !== null) x.redPrice = nr; if (row.broken !== undefined && nb !== null) x.broken = nb;
           if (row.qty !== undefined && nq !== null && !x.qtyLinked) x.qty = nq; if (row.red !== undefined && nrd !== null && !x.redLinked) x.red = nrd; }), 'Đã lưu ngày ' + dmy(sd) + '.');
-      });
+      };
+      $('salesBody').addEventListener('click', onSalesAct); $('seModal').addEventListener('click', onSalesAct);
       $('salesPager').addEventListener('click', event => { const b = event.target.closest('button[data-p]'); if (!b) return; const pages = Math.max(1, Math.ceil(salesRows().length / PAGE)); salesPage = pageMove(salesPage, pages, b.dataset.p); salesEditDate = ''; renderSales(); $('salesBody').closest('article').scrollIntoView({ block: 'start' }); });
       $('finPager').addEventListener('click', event => { const b = event.target.closest('button[data-p]'); if (!b) return; const pages = Math.max(1, Math.ceil(finFiltered().length / PAGE)); finPage = pageMove(finPage, pages, b.dataset.p); renderFinTable(); $('finBody').closest('article').scrollIntoView({ block: 'start' }); });
       ['finQ', 'finCat'].forEach(id => $(id).addEventListener('input', () => { finPage = 1; renderFinTable(); }));
@@ -3433,7 +3473,7 @@
       // Xóa phiên đăng nhập và số liệu lưu tạm trên máy này
       function forceLogout(message) {
         sync.role = ''; sync.mgr = false; sync.name = ''; sync.token = ''; sync.pending = {}; sync.flockPending = false; subs = [];
-        clearFin(); clearLab(); try { accessRows = []; $('accessModal').hidden = true; } catch (_) { /* chưa khởi tạo */ }
+        clearFin(); clearLab(); try { accessRows = []; $('accessModal').hidden = true; $('seModal').hidden = true; salesEditDate = ''; } catch (_) { /* chưa khởi tạo */ }
         state = { version: DATA_VERSION, initialFlock: 0, records: [], alerts: { ...DEFAULT_ALERTS } }; saveState(); saveSync();
         editingDate = null; syncEls.token.value = '';
         applyRole(); resetForm(); render(); setSyncStatus('Chưa đăng nhập');
