@@ -318,7 +318,7 @@
     .farm-tabs { display: flex; gap: 8px; margin: 4px 0 16px; padding: 5px; background: #e8f1ea; border-radius: 14px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
     .sub-tab { border: 0; background: transparent; color: var(--green-800); font-weight: 750; padding: 10px 18px; border-radius: 10px; font-size: .95rem; }
     .sub-tab.active { background: var(--green-800); color: #fff; box-shadow: 0 5px 12px rgba(181,57,28,.25); }
-    body.locked .farm-tabs, body.view-sales #farmTabs, body.view-fin #farmTabs, body.view-lab #farmTabs, body.view-tc #farmTabs { display: none !important; }
+    body.locked .farm-tabs, body.view-sales #farmTabs, body.view-fin #farmTabs, body.view-tc #farmTabs { display: none !important; }
     .fold-body { margin-top: 12px; }
     .pc-wrap { position: relative; }
     .pc-wrap svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
@@ -673,8 +673,9 @@
     .tc-chk div.bad i { color: #c0602a; } .tc-chk div.good i { color: #1f9d55; }
     .tc-chk b { font-weight: 800; }
     .tc-chk div[data-tx] { cursor: pointer; } .tc-chk div[data-tx]:hover { background: #ffe9cc; }
-    .tc-chk div[data-tx] > span > b:first-child::after { content: ' · xem danh sách ›'; color: #b0472a; font-weight: 800; font-size: .8rem; }
-    @media print { .tc-chk div[data-tx] > span > b:first-child::after { content: ''; } }
+    .tc-chk .chk-more { font-style: normal; color: #b0472a; font-weight: 800; font-size: .8rem; white-space: nowrap; }
+    .tc-chk-card .care-toggle { margin-bottom: 8px; } #tcChkNote.tc-chk-warn { color: #c0602a; font-weight: 700; }
+    @media print { .tc-chk .chk-more { display: none; } }
     .tc-chk small { display: block; color: #7a6858; }
     #tcView [data-tx] { cursor: pointer; }
     #tcView tr[data-tx]:hover td { background: #fbefdc; }
@@ -852,7 +853,6 @@
       <button type="button" class="view-tab" data-view="sales" aria-pressed="false">Xuất hàng</button>
       <button type="button" class="view-tab" data-view="fin" aria-pressed="false">Thu chi</button>
       <button type="button" class="view-tab admin-only" data-view="tc" aria-pressed="false">Tài chính</button>
-      <button type="button" class="view-tab" data-view="lab" aria-pressed="false">Xét nghiệm</button>
       </div>
       <section class="sync-card" aria-label="Đăng nhập">
       <div class="card-head sync-toggle" id="syncToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="syncBody"><h2>Đăng nhập</h2><span class="sync-head-right"><span id="syncStatus">Chưa đăng nhập</span><span class="sync-chevron" aria-hidden="true">›</span></span></div>
@@ -875,7 +875,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 18/11/2026-l</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 18/11/2026-m</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -883,6 +883,7 @@
     <nav class="farm-tabs data-only no-entry" id="farmTabs" aria-label="Trang trại">
       <button type="button" class="sub-tab active" data-sub="main" aria-pressed="true"><span class="tl">Nhập liệu và tổng quan</span><span class="ts">Nhập liệu</span></button>
       <button type="button" class="sub-tab" data-sub="report" aria-pressed="false"><span class="tl">Báo cáo tỷ lệ đẻ</span><span class="ts">Báo cáo tỷ lệ đẻ</span></button>
+      <button type="button" class="sub-tab" data-sub="lab" aria-pressed="false"><span class="tl">Xét nghiệm</span><span class="ts">Xét nghiệm</span></button>
     </nav>
 
     <section class="report-view data-only no-entry" id="reportView" aria-label="Báo cáo tỷ lệ đẻ">
@@ -1063,7 +1064,7 @@
       <p class="tc-hint tc-noprint">Bấm vào con số bất kỳ để xem diễn giải và lịch sử các khoản tạo nên nó.</p>
       <p class="alt-note" id="tcMsg" hidden></p>
       <div class="report-kpis tc-kpis" id="tcKpis"></div>
-      <article class="card rep-card tc-chk-card" id="tcChkCard"><div class="card-head"><h2>Kiểm tra số liệu</h2><span id="tcChkNote"></span></div><div class="tc-chk" id="tcChk"></div></article>
+      <article class="card rep-card tc-chk-card" id="tcChkCard"><button type="button" class="care-toggle" id="tcChkToggle" aria-expanded="true" aria-controls="tcChk"><h2 class="section-title care-heading" style="margin:0">Kiểm tra số liệu</h2><span class="care-age" id="tcChkNote"></span></button><div class="tc-chk" id="tcChk"></div></article>
       <div class="tc-grid">
         <article class="card rep-card"><div class="card-head"><h2>1. Kết quả kinh doanh</h2><span id="tcPlNote"></span></div><div class="table-wrap"><table class="alt-table tc-table" id="tcPl"></table></div></article>
         <article class="card rep-card"><div class="card-head"><h2>2. Dòng tiền</h2><span id="tcCfNote"></span></div><div class="table-wrap"><table class="alt-table tc-table" id="tcCf"></table></div></article>
@@ -2629,7 +2630,13 @@
           rows: () => dups.flatMap(d => d.g.map(r => ({ c: [r.date ? dmy(r.date) : (r.dateText || '—'), r.text || '—', `${r.k} · dòng ${r.row}`, mf(r.amount)], v: r.amount }))), cols: ['Ngày', 'Nội dung', 'Loại · vị trí', 'Số tiền'] });
         // 6. vốn góp: sổ thu so với bảng vốn góp
         const hs = fin.holders || [], tab = sumBy(hs, h => h.total), book = sumBy(M.thu.filter(r => r.kind === 'von'), r => r.amount) - sumBy(M.refunds, r => r.amount);
-        const refOf = n => M.refunds.filter(r => (' ' + normName(r.text) + ' ').includes(' ' + n + ' '));
+        const refOwner = new Map();
+        M.refunds.forEach(r => { const t = ' ' + normName(r.text) + ' '; const h = hs.find(h => { const n = normName(h.name); return n && t.includes(' ' + n + ' '); }); if (h) refOwner.set(r.row, normName(h.name)); });
+        M.refunds.filter(r => !refOwner.has(r.row)).forEach(r => {   // không ghi tên: gán cho người có phần góp thừa bằng đúng số tiền này
+          const h = hs.find(h => { const n = normName(h.name), got = sumBy(M.thu.filter(t => t.kind === 'von' && normName(t.text) === n), t => t.amount) - sumBy(M.refunds.filter(x => refOwner.get(x.row) === n), x => x.amount); return Math.round(got - h.total) === Math.round(r.amount); });
+          if (h) refOwner.set(r.row, normName(h.name));
+        });
+        const refOf = n => M.refunds.filter(r => refOwner.get(r.row) === n);
         if (hs.length) {
           const vRows = hs.map(h => { const n = normName(h.name), list = M.thu.filter(r => r.kind === 'von' && normName(r.text) === n), back = refOf(n); return { h, list, back, got: sumBy(list, r => r.amount) - sumBy(back, r => r.amount) }; });
           const off = vRows.filter(o => Math.abs(o.h.total - o.got) > 1000), diffAll = tab - book;
@@ -2667,9 +2674,13 @@
       function renderTcChecks() {
         const list = tcChecks(); tcCtx.checks = list;
         const nBad = list.filter(c => c.bad && !c.soft).length;
-        $('tcChkNote').textContent = nBad ? `${nBad} vấn đề cần xem` : 'Số liệu ổn';
-        $('tcChk').innerHTML = list.map(c => `<div class="${c.info ? 'info' : c.bad ? 'bad' : 'good'}"${c.bad && c.rows ? ` data-tx="chk:${c.id}"` : ''}><i>${c.info ? 'i' : c.bad ? '!' : '✓'}</i><span>${c.t}${c.bad && c.h ? `<small>${escapeHtml(c.h)}</small>` : ''}</span></div>`).join('');
+        $('tcChkNote').textContent = (nBad ? `${nBad} vấn đề cần xem` : 'Số liệu ổn') + ($('tcChk').hidden ? ' · bấm để mở' : '');
+        $('tcChkNote').classList.toggle('tc-chk-warn', !!nBad);
+        $('tcChk').innerHTML = list.map(c => `<div class="${c.info ? 'info' : c.bad ? 'bad' : 'good'}"${c.bad && c.rows ? ` data-tx="chk:${c.id}"` : ''}><i>${c.info ? 'i' : c.bad ? '!' : '✓'}</i><span>${c.t}${c.bad && c.rows ? ' <em class="chk-more">Xem danh sách ›</em>' : ''}${c.bad && c.h ? `<small>${escapeHtml(c.h)}</small>` : ''}</span></div>`).join('');
       }
+      (() => { let open = true; try { open = localStorage.getItem('quan-ly-trai-ga-chk-open') !== '0'; } catch (_) { /* bỏ qua */ }
+        $('tcChk').hidden = !open; $('tcChkToggle').setAttribute('aria-expanded', String(open)); })();
+      $('tcChkToggle').addEventListener('click', () => { const open = $('tcChk').hidden; $('tcChk').hidden = !open; $('tcChkToggle').setAttribute('aria-expanded', String(open)); try { localStorage.setItem('quan-ly-trai-ga-chk-open', open ? '1' : '0'); } catch (_) { /* bỏ qua */ } if (tcCtx) renderTcChecks(); });
       function txRender() {
         const E = txState && txState.e; if (!E || !E.rows) return;
         const q = ($('txQ').value || '').trim().toLowerCase(), rows = E.rows.filter(r => !q || r.c.join(' ').toLowerCase().includes(q));
@@ -3637,7 +3648,7 @@
       }
       function paintNav() {
         paintFinSub(); paintSalesSub();
-        const nav = (curView === 'main' || curView === 'report') ? 'farm' : curView;
+        const nav = (curView === 'main' || curView === 'report' || curView === 'lab') ? 'farm' : curView;   // Xét nghiệm là tab con của Trang trại
         document.querySelectorAll('.view-tab').forEach(btn => { const on = btn.dataset.view === nav; btn.classList.toggle('active', on); btn.setAttribute('aria-pressed', String(on)); if (on) $('menuCurrent').textContent = btn.textContent; });
         if (!sync.role) $('menuCurrent').textContent = 'Đăng nhập'; else if (isEntry()) $('menuCurrent').textContent = 'Tài khoản';
         document.querySelectorAll('.sub-tab').forEach(btn => { const on = btn.dataset.sub === curView; btn.classList.toggle('active', on); btn.setAttribute('aria-pressed', String(on)); });
@@ -3647,7 +3658,7 @@
         curView = ok && ['report', 'sales', 'fin', 'lab'].includes(view) || (ok && view === 'tc' && isAdmin()) ? view : 'main';
         reportOn = curView === 'report';
         const cl = document.body.classList; cl.toggle('view-report', reportOn); cl.toggle('view-sales', curView === 'sales'); cl.toggle('view-fin', curView === 'fin'); cl.toggle('view-lab', curView === 'lab'); cl.toggle('view-tc', curView === 'tc');
-        if (curView === 'main' || curView === 'report') lastFarm = curView;
+        if (curView === 'main' || curView === 'report' || curView === 'lab') lastFarm = curView;
         paintNav();
         setMenu(false);
         if (reportOn) { renderReport(computedRecords()); window.scrollTo({ top: 0 }); }
