@@ -884,7 +884,7 @@
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 18/11/2026-s</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 18/11/2026-t</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1089,7 +1089,7 @@
         <div class="table-wrap"><table class="alt-table tc-table tc-month" id="tcMonths"></table></div>
         <p class="tc-note">* Khác: khoản trước ngày bắt đầu xuất trứng, khoản thiếu ngày/ngày tương lai, hoặc tháng cũ hơn 12 tháng – để cộng các dòng bằng tổng của kỳ.</p>
       </article>
-      <p class="tc-note">Cách tính: doanh thu theo trứng đã xuất (sổ xuất hàng). Khấu hao đều theo ngày, bắt đầu từ ngày chi hoặc từ ngày bắt đầu xuất trứng nếu chi trước đó; thời gian khấu hao từng mục xem và sửa ở thẻ "Cài đặt khấu hao". Mục không khấu hao là chi phí vận hành; chi phí nuôi trước ngày bắt đầu xuất trứng được cộng vào giá trị đàn gà. Thu nhập khác (lãi tiền gửi…) được tính vào lợi nhuận; vốn góp, tiền vay, trả nợ gốc vay, hoàn trả vốn và khoản chuyển nhầm được hoàn lại không tính vào lợi nhuận. Lợi nhuận là số trước thuế thu nhập doanh nghiệp. Báo cáo dùng cho quản trị nội bộ; khi quyết toán thuế, kế toán đối chiếu thời gian khấu hao với khung của Thông tư 45/2013/TT-BTC.</p>
+      <p class="tc-note">Cách tính: doanh thu theo trứng đã xuất (sổ xuất hàng). Khấu hao đều theo ngày, bắt đầu từ ngày chi hoặc từ ngày bắt đầu xuất trứng nếu chi trước đó; thời gian khấu hao từng mục xem và sửa ở thẻ "Cài đặt khấu hao". Mục không khấu hao là chi phí vận hành; khoản mua trước ngày bắt đầu xuất trứng (vd cám mua trữ) tính vào chi phí của ngày bắt đầu xuất trứng (nếu trại tự nuôi gà hậu bị thì bật ô tương ứng trong Cài đặt khấu hao để cộng vào giá trị đàn gà). Thu nhập khác (lãi tiền gửi…) được tính vào lợi nhuận; vốn góp, tiền vay, trả nợ gốc vay, hoàn trả vốn và khoản chuyển nhầm được hoàn lại không tính vào lợi nhuận. Lợi nhuận là số trước thuế thu nhập doanh nghiệp. Báo cáo dùng cho quản trị nội bộ; khi quyết toán thuế, kế toán đối chiếu thời gian khấu hao với khung của Thông tư 45/2013/TT-BTC.</p>
       <article class="card rep-card tc-noprint" id="tcCfgCard">
         <button type="button" class="care-toggle" id="tcCfgToggle" aria-expanded="false" aria-controls="tcCfgBody"><h2 class="section-title care-heading" style="margin:0">Cài đặt khấu hao</h2><span class="care-age" id="tcCfgHint">Bấm để mở</span></button>
         <div id="tcCfgBody" hidden>
@@ -2400,7 +2400,7 @@
       const TC_DEF_TEXTS = [{ key: 'giấy phép môi trường', months: 96 }, { key: 'ocop', months: 36 }, { key: 'ocoop', months: 36 }];
       const tcNormCache = new Map();
       const tcNorm = x => { const k = String(x || ''); let v = tcNormCache.get(k); if (v === undefined) { if (tcNormCache.size > 8000) tcNormCache.clear(); v = k.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim(); tcNormCache.set(k, v); } return v; };
-      function tcCfg() { const c = fin.tcCfg; return { preCap: !(c && c.preCap === false), cats: (c && c.cats) || {}, salv: (c && c.salv) || {}, salvF: (c && c.salvF) || {}, texts: c && Array.isArray(c.texts) ? c.texts : TC_DEF_TEXTS, saved: !!c }; }
+      function tcCfg() { const c = fin.tcCfg; return { preCap: !!(c && c.rearCap === true), cats: (c && c.cats) || {}, salv: (c && c.salv) || {}, salvF: (c && c.salvF) || {}, texts: c && Array.isArray(c.texts) ? c.texts : TC_DEF_TEXTS, saved: !!c }; }
       function tcRuleOf(r) {   // { months, group } – quy tắc theo nội dung được ưu tiên, rồi đến theo mục chi
         const cfg = tcCfg(), t = tcNorm(r.text);
         const tr = cfg.texts.find(x => x.key && t.includes(tcNorm(x.key)));
@@ -2426,7 +2426,7 @@
         const start = firstSale || allDates[0] || today;
         // Chi phí nuôi trước ngày bắt đầu xuất trứng (thức ăn, thuốc, nhân công… giai đoạn gà hậu bị) là một phần giá trị đàn gà,
         // không phải chi phí của kỳ đó → cộng vào nhóm Gà hậu bị và phân bổ theo thời gian khai thác của gà (cài đặt preCap, mặc định bật)
-        const cfgM = tcCfg(), preOn = cfgM.preCap !== false;
+        const cfgM = tcCfg(), preOn = cfgM.preCap === true;
         const gaGroup = (() => { const hit = chi.map(r => ({ r, m: TC_LIFE_R0(r) })).find(o => o.m > 0 && /h[ậa]u\s*b[ịi]/i.test(tcRuleOf(o.r).group)); return hit ? { g: tcRuleOf(hit.r).group, m: hit.m } : { g: 'Gà hậu bị', m: Object.prototype.hasOwnProperty.call(cfgM.cats, 'Gà hậu bị') ? cfgM.cats['Gà hậu bị'] || 18 : 18 }; })();
         chi.forEach(r => {
           r._life = r.loanPay ? 0 : TC_LIFE_R0(r); r._grp = r._life ? tcRuleOf(r).group : ''; r._pre = false;
@@ -2446,7 +2446,7 @@
           return { ...r, salvUsed: used, gain: r.amount - used };
         });
         const tlGainOf = new Map(tlRows.map(r => [r.row, r]));
-        return { today, chi, thu, sales, start, assets, salvG, depIn, tlRows, tlGainOf, opex: chi.filter(r => !TC_LIFE_R(r) && !r.refund && !r.loanPay), refunds: chi.filter(r => r.refund), loanPays: chi.filter(r => r.loanPay), pre: chi.filter(r => r._pre), gaGroup, passPairs, passWant };
+        return { today, chi, thu, sales, start, assets, salvG, depIn, tlRows, tlGainOf, opex: (() => { const o = chi.filter(r => !TC_LIFE_R(r) && !r.refund && !r.loanPay); o.forEach(r => { r._pd = r.date && !r.future && r.date < start ? start : null; }); return o; })(), opexEarly: chi.filter(r => !r.refund && !r.loanPay && r.date && !r.future && r.date < start && (r._pre || !TC_LIFE_R0(r))), refunds: chi.filter(r => r.refund), loanPays: chi.filter(r => r.loanPay), pre: chi.filter(r => r._pre), gaGroup, passPairs, passWant };
       }
       function tcRange(M) {
         const rg = periodRange(tcP);
@@ -2458,7 +2458,8 @@
         const sl = M.sales.filter(r => r.date >= a && r.date <= b);
         const rev = sumBy(sl, r => r.total), revW = sumBy(sl, r => r.wMoney), revR = sumBy(sl, r => r.rMoney);
         const eggs = sumBy(sl, r => r.qty + r.red);
-        const op = M.opex.filter(inR), opex = sumBy(op, r => r.amount);
+        const inRp = r => r._pd ? r._pd >= a && r._pd <= b : inR(r);   // ngày tính vào lợi nhuận: khoản mua trước ngày đẻ tính ở ngày bắt đầu xuất trứng
+        const op = M.opex.filter(inRp), opex = sumBy(op, r => r.amount), opexCash = sumBy(M.opex.filter(inR), r => r.amount);
         const cats = new Map(); op.forEach(r => { const k = r.cat || '(chưa phân loại)'; cats.set(k, (cats.get(k) || 0) + r.amount); });
         const dep = b >= a ? M.depIn(a, b) : 0;
         const th = M.thu.filter(inR), inv = M.chi.filter(r => TC_LIFE_R(r) > 0 && inR(r)), refund = sumBy(M.refunds.filter(inR), r => r.amount);
@@ -2466,7 +2467,7 @@
           von: sumBy(th.filter(r => r.kind === 'von'), r => r.amount), egg: sumBy(th.filter(r => r.kind === 'egg'), r => r.amount), khac: sumBy(th.filter(r => r.kind === 'khac'), r => r.amount),
           vay: sumBy(th.filter(r => r.kind === 'vay'), r => r.amount), loanPay: sumBy(M.loanPays.filter(inR), r => r.amount),
           tl: sumBy(th.filter(r => r.kind === 'tl'), r => r.amount), tlGain: sumBy(th.filter(r => r.kind === 'tl'), r => (M.tlGainOf.get(r.row) || {}).gain || 0),
-          invest: sumBy(inv, r => r.amount), refund, opProfit: rev - opex, net: rev - opex - dep + sumBy(th.filter(r => r.kind === 'khac'), r => r.amount) + sumBy(th.filter(r => r.kind === 'tl'), r => (M.tlGainOf.get(r.row) || {}).gain || 0) };
+          invest: sumBy(inv, r => r.amount), opexCash, refund, opProfit: rev - opex, net: rev - opex - dep + sumBy(th.filter(r => r.kind === 'khac'), r => r.amount) + sumBy(th.filter(r => r.kind === 'tl'), r => (M.tlGainOf.get(r.row) || {}).gain || 0) };
       }
       function fillTcPSel(M) { fillPSel(tcP, M.sales.map(r => r.date).concat(M.chi.concat(M.thu).filter(r => r.date && !r.future).map(r => r.date)), 'tcP'); }
       function renderTc() { finDataGen++;
@@ -2479,7 +2480,7 @@
         $('tcPLabel').textContent = R.label; $('tcSub').textContent = `Trại CP-T1 · ${R.label} · lập ngày ${dmy(M.today)}`;
         // KPI
         const tbox = (color, bg, label, value, sub, tx) => `<div class="card kpi"${tx ? ` data-tx="${tx}"` : ''} style="--kc:${color};--kb:${bg}"><div class="k-label">${label}</div><div class="k-value">${value}</div><div class="k-sub">${sub}</div></div>`;
-        const open = before ? (before.von - before.refund + before.egg + before.tl + before.khac + before.vay - before.opex - before.invest - before.loanPay) : 0, inSum = C.von - C.refund + C.egg + C.tl + C.khac + C.vay, outSum = C.opex + C.invest + C.loanPay, cashEnd = open + inSum - outSum;
+        const open = before ? (before.von - before.refund + before.egg + before.tl + before.khac + before.vay - before.opexCash - before.invest - before.loanPay) : 0, inSum = C.von - C.refund + C.egg + C.tl + C.khac + C.vay, outSum = C.opexCash + C.invest + C.loanPay, cashEnd = open + inSum - outSum;
         const arRaw = cum.rev - cum.egg, ar = Math.max(0, arRaw);
         $('tcKpis').innerHTML =
           tbox('#1f9d55', '#e8f5ec', 'Doanh thu bán trứng', mf(C.rev), `${numberFormat.format(C.eggs)} quả đã xuất`, 'rev') +
@@ -2508,7 +2509,7 @@
           ${C.tl ? `<tr data-tx="in:tl"><td class="tc-ind">Bán gà loại</td><td class="number">${mf(C.tl)}</td></tr>` : ''}${C.vay ? `<tr data-tx="in:vay"><td class="tc-ind">Tiền vay</td><td class="number">${mf(C.vay)}</td></tr>` : ''}<tr data-tx="in:khac"><td class="tc-ind">Thu khác</td><td class="number">${mf(C.khac)}</td></tr>
           <tr class="tc-sum" data-tx="inAll"><td>Tổng tiền vào</td><td class="number tc-pos">${mf(inSum)}</td></tr>
           <tr class="tc-sec"><td colspan="2">Tiền ra</td></tr>
-          <tr data-tx="opex"><td class="tc-ind">Chi phí vận hành</td><td class="number">${mf(C.opex)}</td></tr>
+          <tr data-tx="opexCash"><td class="tc-ind">Chi phí vận hành</td><td class="number">${mf(C.opexCash)}</td></tr>
           <tr data-tx="inv"><td class="tc-ind">Chi đầu tư</td><td class="number">${mf(C.invest)}</td></tr>${C.loanPay ? `<tr data-tx="loanPay"><td class="tc-ind">Trả nợ gốc vay</td><td class="number">${mf(C.loanPay)}</td></tr>` : ''}
           <tr class="tc-sum" data-tx="outAll"><td>Tổng tiền ra</td><td class="number tc-neg">${mf(outSum)}</td></tr>
           <tr class="tc-sum" data-tx="flow"><td>Lưu chuyển trong kỳ</td><td class="number ${sign(inSum - outSum)}">${mf(inSum - outSum)}</td></tr>
@@ -2583,7 +2584,7 @@
           c: part === 'w' ? [dmy(r.date), nf(r.qty), nf(r.price), mf(r.wMoney)] : part === 'r' ? [dmy(r.date), nf(r.red), nf(r.redPrice), mf(r.rMoney)]
             : [dmy(r.date), `${nf(r.qty)} × ${nf(r.price)}`, r.red ? `${nf(r.red)} × ${nf(r.redPrice)}` : '—', mf(r.total)],
           v: part === 'w' ? r.wMoney : part === 'r' ? r.rMoney : r.total }));
-        const opIn = M.opex.filter(r => txInR(r, R.from, R.to, R.all));
+        const opIn = M.opex.filter(r => r._pd ? r._pd >= R.from && r._pd <= R.to : txInR(r, R.from, R.to, R.all)), opCashIn = M.opex.filter(r => txInR(r, R.from, R.to, R.all));
         const invIn = M.chi.filter(r => TC_LIFE_R(r) > 0 && txInR(r, R.from, R.to, R.all));
         const refIn = M.refunds.filter(r => txInR(r, R.from, R.to, R.all));
         const thIn = M.thu.filter(r => txInR(r, R.from, R.to, R.all));
@@ -2598,10 +2599,11 @@
             calc: [ln('Số quả', null, '', 0, nf(sumBy(M.sales.filter(inSales), r => r.qty)) + ' quả'), ln('Doanh thu trứng trắng', C.revW, '=', 1)], lt: 'Từng ngày', cols: ['Ngày', 'Số quả', 'Giá', 'Thành tiền'], rows: saleRows('w') };
           case 'revR': return { t: 'Doanh thu trứng đỏ', why: 'Cộng (số trứng đỏ × giá trứng đỏ) của từng ngày trong Sổ xuất hàng.',
             calc: [ln('Số quả', null, '', 0, nf(sumBy(M.sales.filter(inSales), r => r.red)) + ' quả'), ln('Doanh thu trứng đỏ', C.revR, '=', 1)], lt: 'Từng ngày', cols: ['Ngày', 'Số quả', 'Giá', 'Thành tiền'], rows: saleRows('r') };
-          case 'opex': return { t: 'Chi phí vận hành', why: 'Tổng các khoản trong Sổ chi <b>không khấu hao, không phải hoàn trả vốn góp, không phải khoản chuyển nhầm đã được hoàn lại</b> (mục nào khấu hao xem ở thẻ "Cài đặt khấu hao"): thức ăn, thuốc, nhân công, điện nước, vận chuyển, chi phí khác…',
+          case 'opex': return { t: 'Chi phí vận hành', why: 'Tổng các khoản trong Sổ chi <b>không khấu hao, không phải hoàn trả vốn góp, không phải trả nợ gốc vay, không phải khoản chuyển nhầm đã được hoàn lại</b>. Khoản mua trước ngày bắt đầu xuất trứng (vd cám mua trữ) được tính vào chi phí của ngày bắt đầu xuất trứng, vì đó là lúc gà dùng đến (mục nào khấu hao xem ở thẻ "Cài đặt khấu hao"): thức ăn, thuốc, nhân công, điện nước, vận chuyển, chi phí khác…',
             calc: [...[...C.cats.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => ln(n, v, '+')), ln('Tổng chi phí vận hành', C.opex, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(opIn) };
           case 'cat': { const v = C.cats.get(arg) || 0; return { t: 'Chi phí: ' + arg, why: `Các khoản trong Sổ chi có mục "${escapeHtml(arg)}" trong kỳ.`,
             calc: [ln(arg, v, '=', 1), ln('Chiếm % doanh thu', null, '', 0, C.rev ? (v / C.rev * 100).toFixed(1).replace('.', ',') + '%' : '—')], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(opIn.filter(r => (r.cat || '(chưa phân loại)') === arg)) }; }
+          case 'opexCash': return { t: 'Chi phí vận hành (tiền chi ra)', why: 'Tiền đã trả cho các khoản chi phí vận hành trong kỳ, theo <b>ngày chi thật</b>. Khác với dòng chi phí ở phần Kết quả kinh doanh ở chỗ: khoản mua trước ngày bắt đầu xuất trứng (vd cám mua trữ) được tính vào lợi nhuận ở ngày bắt đầu xuất trứng.', calc: [ln('Chi phí vận hành đã trả', C.opexCash, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(opCashIn) };
           case 'opProfit': return { t: 'Lợi nhuận vận hành', why: 'Tiền lãi từ việc nuôi gà bán trứng, <b>chưa trừ</b> khấu hao chuồng trại, điện mặt trời và gà hậu bị.',
             calc: [ln('Doanh thu', C.rev, '+'), ln('Chi phí vận hành', C.opex, '−'), ln('Lợi nhuận vận hành', C.opProfit, '=', 1)] };
           case 'dep': return { t: 'Khấu hao đầu tư', why: `Tiền đầu tư được <b>chia đều theo thời gian khấu hao</b> đặt ở thẻ "Cài đặt khấu hao". Nếu có <b>giá trị thu hồi</b> (vd tiền bán gà loại cuối lứa) thì chỉ khấu hao phần nguyên giá − thu hồi. Mỗi khoản = nguyên giá ÷ thời gian sử dụng × số ngày nằm trong kỳ. Khoản chi trước ngày bắt đầu xuất trứng (${dmy(M.start)}) được tính khấu hao từ ngày đó.`,
@@ -2609,7 +2611,7 @@
           case 'net': return { t: 'Lợi nhuận ròng', why: 'Lãi thực sau khi trừ cả chi phí vận hành và phần hao mòn của tài sản đầu tư (khấu hao), cộng thu nhập khác (lãi tiền gửi…) và lãi/lỗ bán gà loại. Chưa trừ thuế thu nhập doanh nghiệp.',
             calc: [ln('Doanh thu', C.rev, '+'), ln('Chi phí vận hành', C.opex, '−'), ln('Khấu hao đầu tư', C.dep, '−'), ...(C.khac ? [ln('Thu nhập khác', C.khac, '+')] : []), ...(C.tl ? [ln('Lãi / lỗ bán gà loại', C.tlGain, '+')] : []), ln('Lợi nhuận ròng (trước thuế)', C.net, '=', 1)] };
           case 'open': return { t: 'Tồn quỹ đầu kỳ', why: 'Toàn bộ tiền vào trừ tiền ra từ đầu sổ đến trước ngày ' + dmy(R.from) + '.',
-            calc: [ln('Thu bán trứng', X.before.egg, '+'), ln('Vốn góp', X.before.von, '+'), ln('Thu khác', X.before.khac, '+'), ln('Chi vận hành', X.before.opex, '−'), ln('Chi đầu tư', X.before.invest, '−'), ...(X.before.refund ? [ln('Hoàn trả vốn góp', X.before.refund, '−')] : []), ln('Tồn quỹ đầu kỳ', X.open, '=', 1)] };
+            calc: [ln('Thu bán trứng', X.before.egg, '+'), ln('Vốn góp', X.before.von, '+'), ln('Thu khác', X.before.khac, '+'), ln('Chi vận hành', X.before.opexCash, '−'), ln('Chi đầu tư', X.before.invest, '−'), ...(X.before.refund ? [ln('Hoàn trả vốn góp', X.before.refund, '−')] : []), ln('Tồn quỹ đầu kỳ', X.open, '=', 1)] };
           case 'in': { const nm = { egg: 'Thu tiền bán trứng', von: 'Vốn góp', tl: 'Bán gà loại', vay: 'Tiền vay', khac: 'Thu khác / thu nhập khác' }[arg];
             const why = { egg: 'Các khoản trong Sổ thu là tiền bán trứng (nội dung có số quả "…q", "bán trứng", "tiền trứng" hoặc tên đợt).', von: 'Các khoản trong Sổ thu có nội dung trùng đúng tên người góp ở bảng Vốn góp và cổ phần.', tl: 'Các khoản trong Sổ thu có chữ "bán gà, bán xác, gà loại, gà thải, thanh lý" – tiền bán gà cuối lứa. Là tiền vào; riêng phần chênh so với giá trị thu hồi đã ước tính mới tính vào lợi nhuận.', vay: 'Các khoản trong Sổ thu có chữ "vay / mượn" (không có chữ "lãi"). Đây là khoản nợ phải trả, không phải thu nhập nên không tính vào lợi nhuận.', khac: 'Các khoản thu còn lại (lãi tiền gửi, thu nhập khác…). Được tính vào <b>lợi nhuận</b> (thu nhập khác) và vào <b>tiền vào</b>. Không gồm: bán trứng, góp vốn, bán gà loại, tiền vay, khoản chuyển nhầm được hoàn lại.' }[arg];
             const list = thIn.filter(r => r.kind === arg);
@@ -2620,7 +2622,7 @@
             calc: [ln('Tiền bán gà loại', sumBy(list, r => r.amount), '+'), ln('Giá trị thu hồi đã ước tính', sumBy(list, r => r.salvUsed), '−'), ln('Lãi / lỗ', sumBy(list, r => r.gain), '=', 1)], lt: 'Các lần bán', cols: ['Ngày', 'Nội dung', 'Thu hồi đã ước tính', 'Lãi / lỗ'], rows: list.map(r => ({ c: [r.date ? dmy(r.date) : (r.dateText || '—'), `${r.text || '—'} · ${mf(r.amount)}`, mf(r.salvUsed), mf(r.gain)], v: r.gain })) }; }
           case 'inAll': return { t: 'Tổng tiền vào', why: 'Mọi khoản trong Sổ thu trong kỳ; vốn góp tính theo số thực góp (đã trừ hoàn trả vốn).', calc: [ln('Thu bán trứng', C.egg, '+'), ln('Vốn thực góp', C.von - C.refund, '+'), ...(C.tl ? [ln('Bán gà loại', C.tl, '+')] : []), ...(C.vay ? [ln('Tiền vay', C.vay, '+')] : []), ln('Thu khác', C.khac, '+'), ln('Tổng tiền vào', X.inSum, '=', 1)], lt: 'Các khoản thu', cols: thuCols, rows: thuRows(thIn) };
           case 'inv': return { t: 'Chi đầu tư', why: 'Tiền đã trả ra trong kỳ cho các khoản có khấu hao (theo thẻ "Cài đặt khấu hao"), gồm cả chi phí nuôi gà trước ngày bắt đầu xuất trứng (được cộng vào giá trị đàn gà). Khác với khấu hao (là phần hao mòn được tính vào chi phí).', calc: [ln('Chi đầu tư', C.invest, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(invIn) };
-          case 'outAll': return { t: 'Tổng tiền ra', why: 'Các khoản trong Sổ chi trong kỳ (khoản hoàn trả vốn góp đã được trừ thẳng vào vốn góp ở phần tiền vào).', calc: [ln('Chi vận hành', C.opex, '+'), ln('Chi đầu tư', C.invest, '+'), ...(C.loanPay ? [ln('Trả nợ gốc vay', C.loanPay, '+')] : []), ln('Tổng tiền ra', X.outSum, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(opIn.concat(invIn, M.loanPays.filter(r => txInR(r, R.from, R.to, R.all)))) };
+          case 'outAll': return { t: 'Tổng tiền ra', why: 'Các khoản trong Sổ chi trong kỳ (khoản hoàn trả vốn góp đã được trừ thẳng vào vốn góp ở phần tiền vào).', calc: [ln('Chi vận hành', C.opexCash, '+'), ln('Chi đầu tư', C.invest, '+'), ...(C.loanPay ? [ln('Trả nợ gốc vay', C.loanPay, '+')] : []), ln('Tổng tiền ra', X.outSum, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(opCashIn.concat(invIn, M.loanPays.filter(r => txInR(r, R.from, R.to, R.all)))) };
           case 'refund': return { t: 'Hoàn trả vốn góp', why: 'Tiền trả lại cho người góp vốn (ví dụ góp thừa). Đây <b>không phải chi phí</b> nên không trừ vào lợi nhuận; chỉ làm giảm tồn quỹ và giảm số vốn góp thực tế. App nhận ra khoản này khi nội dung có chữ "hoàn / trả lại / rút" kèm tên người góp, hoặc ghi "hoàn vốn / trả vốn / rút vốn".', calc: [ln('Hoàn trả vốn góp', C.refund, '=', 1)], lt: 'Các khoản chi', cols: chiCols, rows: chiRows(refIn) };
           case 'flow': return { t: 'Lưu chuyển trong kỳ', why: 'Tiền vào trừ tiền ra trong kỳ: dương là quỹ tăng, âm là quỹ giảm.', calc: [ln('Tổng tiền vào', X.inSum, '+'), ln('Tổng tiền ra', X.outSum, '−'), ln('Lưu chuyển', X.inSum - X.outSum, '=', 1)] };
           case 'cashEnd': return { t: 'Tồn quỹ cuối kỳ', why: 'Số tiền theo sổ thu chi lẽ ra đang còn (tiền mặt + ngân hàng) đến ' + dmy(R.to) + '. Khi chọn "Toàn bộ", số này bằng ô "Còn lại (thu − chi)" ở trang Thu chi.',
@@ -2724,6 +2726,9 @@
         const pw = M.passWant.filter(r => R.all || inP(r));
         if (pw.length) out.push({ id: 'passWant', bad: pw.length, t: `<b>${pw.length} khoản chi có chữ "hoàn / chuyển sai" nhưng không thấy khoản thu cùng số tiền</b> (${mf(sumBy(pw, r => r.amount))}) → đang tính là chi phí.`, h: 'Nếu tiền đã được hoàn lại, hãy ghi khoản thu với đúng số tiền đó; nếu chưa hoàn thì đây đúng là khoản đang mất.',
           rows: () => pw.map(r => ({ c: [r.date ? dmy(r.date) : (r.dateText || '—'), r.text || '—', `Chi · dòng ${r.row}`, mf(r.amount)], v: r.amount })), cols: ['Ngày', 'Nội dung', 'Vị trí', 'Số tiền'] });
+        const early = M.opex.filter(r => r._pd && (R.all || (r._pd >= R.from && r._pd <= R.to)));
+        if (early.length) out.push({ id: 'early', bad: 1, soft: true, info: true, t: `${early.length} khoản chi phí mua trước ngày bắt đầu xuất trứng (${mf(sumBy(early, r => r.amount))}, vd cám mua trữ) được tính vào chi phí ngày ${dmy(M.start)} – lúc gà bắt đầu dùng – chứ không vào tháng mua.`, h: 'Dòng tiền vẫn ghi theo ngày chi thật.',
+          rows: () => early.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(r => ({ c: [dmy(r.date), r.text || '—', r.cat || '(chưa có mục)', mf(r.amount)], v: r.amount })), cols: ['Ngày chi', 'Nội dung', 'Mục', 'Số tiền'] });
         // 6d. chi phí nuôi trước ngày đẻ được cộng vào đàn gà; tiền vay
         if (M.pre.length) out.push({ id: 'pre', bad: 1, soft: true, info: true, t: `${M.pre.length} khoản chi phí nuôi trước ngày bắt đầu xuất trứng (${mf(sumBy(M.pre, r => r.amount))}) được cộng vào giá trị đàn gà và phân bổ ${M.gaGroup.m} tháng, không tính hết vào chi phí lúc chi.`, h: 'Tắt được ở thẻ "Cài đặt khấu hao".',
           rows: () => M.pre.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(r => ({ c: [dmy(r.date), r.text || '—', r.cat || '(chưa có mục)', mf(r.amount)], v: r.amount })), cols: ['Ngày', 'Nội dung', 'Mục', 'Số tiền'] });
@@ -2802,8 +2807,8 @@
           return `<input type="number" min="0" step="1000000" inputmode="numeric" class="salv" value="${sv(g)}" placeholder="0" data-cfg="${attr}" ${on ? '' : 'disabled'}><div class="eq">${sv(g) ? moneyShort(sv(g)) : ''}</div>${on && /h[ậa]u\s*b[ịi]/i.test(g) ? `<button type="button" class="sv-mode" data-cfg="fmode" data-g="${escapeHtml(g)}">Tính theo công thức ›</button>` : ''}`; };
         $('tcCfgCats').innerHTML = cats.map(([k, v]) => { const m = cur(k); return `<tr data-cat="${escapeHtml(k)}"><td>${escapeHtml(k)}</td><td class="number hide-s">${moneyFull(v)}</td><td class="number"><input type="number" min="0" max="600" step="1" inputmode="numeric" value="${m}" data-cfg="cat"><div class="eq ${m ? '' : 'op'}">${tcEq(m)}</div></td><td class="number">${salvCell(k, 'salv', !!m)}</td></tr>`; }).join('');
         $('tcCfgTexts').innerHTML = tcCfgDraft.texts.map((t, i) => { const n = chi.filter(r => t.key && tcNorm(r.text).includes(tcNorm(t.key))); return `<tr data-i="${i}"><td><input type="text" value="${escapeHtml(t.key)}" data-cfg="key" placeholder="vd: giấy phép môi trường"></td><td class="number hide-s">${n.length} khoản · ${moneyFull(sumBy(n, r => r.amount))}</td><td class="number"><input type="number" min="0" max="600" step="1" inputmode="numeric" value="${t.months}" data-cfg="tm"><div class="eq">${tcEq(t.months)}</div></td><td class="number">${salvCell('Nội dung: ' + t.key, 'tsalv', true)}</td><td><button type="button" class="del" data-cfg="del" aria-label="Xoá quy tắc">✕</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="alt-note">Chưa có quy tắc theo nội dung.</td></tr>';
-        $('tcPreCap').checked = tcCfgDraft.preCap !== false;
-        { const M0 = tcCtx && tcCtx.M; const pre = M0 ? M0.pre : []; $('tcPreCapTxt').innerHTML = `<b>Cộng chi phí nuôi trước ngày bắt đầu xuất trứng${M0 ? ' (' + dmy(M0.start) + ')' : ''} vào giá trị đàn gà</b> và phân bổ theo thời gian khai thác của gà (thức ăn, thuốc, nhân công… giai đoạn gà hậu bị là một phần giá trị đàn gà, không phải chi phí của tháng đó)${pre.length ? ` – hiện có ${pre.length} khoản, ${moneyFull(sumBy(pre, r => r.amount))}` : ''}.`; }
+        $('tcPreCap').checked = tcCfgDraft.preCap === true;
+        { const M0 = tcCtx && tcCtx.M; const pre = M0 ? M0.pre : []; const preAll = M0 ? M0.opexEarly : []; $('tcPreCapTxt').innerHTML = `<b>Trại tự nuôi gà hậu bị trước khi đẻ</b>: cộng chi phí phát sinh trước ngày bắt đầu xuất trứng${M0 ? ' (' + dmy(M0.start) + ')' : ''} vào giá trị đàn gà và phân bổ theo thời gian khai thác${preAll.length ? ` (${preAll.length} khoản, ${moneyFull(sumBy(preAll, r => r.amount))})` : ''}. <span class="tc-note">Để trống nếu nhập gà đã đến tuổi đẻ: khi đó các khoản mua trước (vd cám mua trữ) được tính vào chi phí của tháng bắt đầu xuất trứng.</span>`; }
         $('tcCfgHint').textContent = tcCfg().saved ? '' : 'Đang dùng mặc định';
       }
       $('tcCfgToggle').addEventListener('click', () => { const open = $('tcCfgBody').hidden; $('tcCfgBody').hidden = !open; $('tcCfgToggle').setAttribute('aria-expanded', String(open)); if (open) { tcCfgDraft = null; renderTcCfg(); } else $('tcCfgHint').textContent = 'Bấm để mở'; });
@@ -2820,11 +2825,11 @@
       $('tcCfgBody').addEventListener('click', e => { const m = e.target.closest('[data-cfg=fmode]'); if (m && tcCfgDraft) { const g = m.dataset.g; if (tcCfgDraft.salvF[g]) delete tcCfgDraft.salvF[g]; else { tcCfgDraft.salvF[g] = { p: 0, w: 0, n: 0 }; delete tcCfgDraft.salv[g]; } renderTcCfg(); const inp = $('tcCfgBody').querySelector(`.sv-f[data-g="${CSS.escape(g)}"] input`); if (inp) inp.focus(); return; }
         const b = e.target.closest('[data-cfg=del]'); if (!b || !tcCfgDraft) return; tcCfgDraft.texts.splice(+b.closest('tr').dataset.i, 1); renderTcCfg(); });
       $('tcCfgAdd').addEventListener('click', () => { if (!tcCfgDraft) tcCfgDraft = tcCfgDraftFrom(); tcCfgDraft.texts.push({ key: '', months: 36 }); renderTcCfg(); const ins = $('tcCfgTexts').querySelectorAll('input[data-cfg=key]'); if (ins.length) ins[ins.length - 1].focus(); });
-      $('tcCfgReset').addEventListener('click', () => { if (!window.confirm('Đưa thời gian khấu hao về mặc định (xây dựng 8 năm, điện mặt trời 4 năm, gà hậu bị 18 tháng, giấy phép môi trường 8 năm, OCOP 3 năm)?')) return; tcCfgDraft = { preCap: true, cats: {}, salv: {}, salvF: {}, texts: TC_DEF_TEXTS.map(t => ({ ...t })) }; renderTcCfg(); altMsg($('tcCfgMsg'), 'Đã đưa về mặc định trên màn hình. Bấm "Lưu cài đặt" để áp dụng.'); });
+      $('tcCfgReset').addEventListener('click', () => { if (!window.confirm('Đưa thời gian khấu hao về mặc định (xây dựng 8 năm, điện mặt trời 4 năm, gà hậu bị 18 tháng, giấy phép môi trường 8 năm, OCOP 3 năm)?')) return; tcCfgDraft = { preCap: false, cats: {}, salv: {}, salvF: {}, texts: TC_DEF_TEXTS.map(t => ({ ...t })) }; renderTcCfg(); altMsg($('tcCfgMsg'), 'Đã đưa về mặc định trên màn hình. Bấm "Lưu cài đặt" để áp dụng.'); });
       $('tcCfgSave').addEventListener('click', async () => {
         if (!tcCfgDraft || !isAdmin()) return;
         const salvF = {}; Object.entries(tcCfgDraft.salvF || {}).forEach(([g, f]) => { if (Number(f.p) > 0 && Number(f.w) > 0) salvF[g] = { p: Number(f.p), w: Number(f.w), n: Number(f.n) > 0 ? Math.round(Number(f.n)) : 0 }; });
-        const cfg = { preCap: tcCfgDraft.preCap !== false, cats: { ...tcCfgDraft.cats }, salv: { ...tcCfgDraft.salv }, salvF, texts: tcCfgDraft.texts.filter(t => String(t.key || '').trim()).map(t => ({ key: String(t.key).trim(), months: t.months })) };
+        const cfg = { rearCap: tcCfgDraft.preCap === true, cats: { ...tcCfgDraft.cats }, salv: { ...tcCfgDraft.salv }, salvF, texts: tcCfgDraft.texts.filter(t => String(t.key || '').trim()).map(t => ({ key: String(t.key).trim(), months: t.months })) };
         const before = fin.tcCfg; fin.tcCfg = cfg; tcCfgDraft = null; renderTc(); renderTcCfg();   // áp dụng ngay trên màn hình
         altMsg($('tcCfgMsg'), 'Đã áp dụng. Đang lưu lên máy chủ…');
         try { const r = await callScript({ action: 'tcCfgSet', cfg }); if (!r || !r.tcCfg) throw new Error('tcCfgSet'); fin.tcCfg = r.tcCfg; try { localStorage.setItem(FIN_KEY, JSON.stringify(fin)); } catch (_) { /* bỏ qua */ } altMsg($('tcCfgMsg'), 'Đã lưu cài đặt khấu hao (dùng chung cho mọi máy).'); showToast('Đã lưu cài đặt khấu hao.'); }
