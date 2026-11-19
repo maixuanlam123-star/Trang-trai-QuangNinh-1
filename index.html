@@ -664,6 +664,7 @@
     .tc-table tr.tc-big td { font-weight: 900; font-size: 1.02rem; background: #fbf4e8; }
     .tc-table td.tc-ind { padding-left: 22px; }
     .tc-table .tc-pct { color: #8a7767; font-size: .78rem; font-weight: 600; margin-left: 6px; }
+    .tc-table .tc-mo { display: block; color: #8a7767; font-size: .76rem; font-weight: 600; margin-top: 1px; }
     .tc-pos { color: #1b7a44; } .tc-neg { color: #c0392b; }
     .tc-note { color: var(--muted); font-size: .8rem; margin: 6px 2px 0; line-height: 1.5; }
     .tc-idx { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
@@ -907,7 +908,7 @@
       </div>
     </section>
     <button type="button" class="button button-primary" id="pwaInstall" hidden style="margin:10px 0 0;width:100%">📲 Cài app vào màn hình chờ</button>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 19/11/2026-h</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 19/11/2026-i</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -2603,11 +2604,13 @@
           const xs = M.assets.filter(x => x.group === g && (x.d0 <= dayN(R.to)));
           const cost = sumBy(xs, x => x.amount), acc = sumBy(xs, x => { const used = Math.min(x.lifeDays, Math.max(0, dayN(R.to) + 1 - x.d0)); return x.base * used / x.lifeDays; });
           const lives = [...new Set(xs.map(x => x.life))];
-          return { g, cost, acc, left: cost - acc, life: lives.length === 1 ? lives[0] : null };
+          const rate = sumBy(xs, x => x.base / x.lifeDays), DM = 365.25 / 12;   // khấu hao mỗi ngày của cả nhóm → quy ra số tháng tương đương
+          const mDone = rate > 0 ? acc / rate / DM : 0, mLeft = rate > 0 ? Math.max(0, (sumBy(xs, x => x.base) - acc) / rate / DM) : 0;
+          return { g, cost, acc, left: cost - acc, life: lives.length === 1 ? lives[0] : null, mDone, mLeft, multi: new Set(xs.map(x => x.d0)).size > 1 };
         }).filter(x => x.cost > 0).sort((a, b) => b.cost - a.cost);
-        const lifeTxt = m => m % 12 ? `${m} tháng` : `${m / 12} năm`;
+        const lifeTxt = m => m % 12 ? `${m} tháng` : `${m / 12} năm`, monTxt = m => (Math.round(m * 10) / 10).toLocaleString('vi-VN') + ' tháng';
         $('tcAs').innerHTML = `<thead><tr><th>Nhóm tài sản</th><th class="number">Nguyên giá</th><th class="number hide-s">Đã khấu hao</th><th class="number">Còn lại</th></tr></thead><tbody>` +
-          groups.map(x => `<tr data-tx="as:${escapeHtml(x.g)}"><td>${escapeHtml(x.g)}<span class="tc-pct">${x.life ? lifeTxt(x.life) : 'nhiều thời hạn'}</span></td><td class="number">${mf(x.cost)}</td><td class="number hide-s">${mf(x.acc)}</td><td class="number">${mf(x.left)}</td></tr>`).join('') +
+          groups.map(x => `<tr data-tx="as:${escapeHtml(x.g)}"><td>${escapeHtml(x.g)}<span class="tc-pct">${x.life ? lifeTxt(x.life) : 'nhiều thời hạn'}</span></td><td class="number">${mf(x.cost)}</td><td class="number hide-s">${mf(x.acc)}<small class="tc-mo">${monTxt(x.mDone)}</small></td><td class="number">${mf(x.left)}<small class="tc-mo">${x.mLeft < 0.05 ? 'đã hết' : 'còn ' + monTxt(x.mLeft)}</small></td></tr>`).join('') +
           `<tr class="tc-sum" data-tx="as:"><td>Tổng</td><td class="number">${mf(sumBy(groups, x => x.cost))}</td><td class="number hide-s">${mf(sumBy(groups, x => x.acc))}</td><td class="number">${mf(sumBy(groups, x => x.left))}</td></tr></tbody>`;
         const hb = M.assets.filter(x => /h[ậa]u\s*b[ịi]/i.test(x.group)).sort((x, y) => x.d0 - y.d0)[0];
         $('tcAsNote').textContent = hb ? `Lứa gà hiện tại khấu hao hết khoảng ${dmy(new Date((hb.d0 + hb.lifeDays) * 864e5).toISOString().slice(0, 10))} (${lifeTxt(hb.life)} kể từ ${dmy(new Date(hb.d0 * 864e5).toISOString().slice(0, 10))}).` : '';
@@ -2714,10 +2717,10 @@
           case 'flow': return { t: 'Lưu chuyển trong kỳ', why: 'Tiền vào trừ tiền ra trong kỳ: dương là quỹ tăng, âm là quỹ giảm.', calc: [ln('Tổng tiền vào', X.inSum, '+'), ln('Tổng tiền ra', X.outSum, '−'), ln('Lưu chuyển', X.inSum - X.outSum, '=', 1)] };
           case 'cashEnd': return { t: 'Tồn quỹ cuối kỳ', why: 'Số tiền theo sổ thu chi lẽ ra đang còn (tiền mặt + ngân hàng) đến ' + dmy(R.to) + '. Khi chọn "Toàn bộ", số này bằng ô "Còn lại (thu − chi)" ở trang Thu chi.',
             calc: [...(X.before ? [ln('Tồn quỹ đầu kỳ', X.open, '+')] : []), ln('Tiền vào', X.inSum, '+'), ln('Tiền ra', X.outSum, '−'), ln('Tồn quỹ cuối kỳ', X.cashEnd, '=', 1)] };
-          case 'as': { const gs = arg ? X.groups.filter(g => g.g === arg) : X.groups, xs = M.assets.filter(x => (!arg || x.group === arg) && x.d0 <= dayN(R.to));
+          case 'as': { const moTx = d => (Math.round(Math.max(0, d) / (365.25 / 12) * 10) / 10).toLocaleString('vi-VN') + ' tháng', gs = arg ? X.groups.filter(g => g.g === arg) : X.groups, xs = M.assets.filter(x => (!arg || x.group === arg) && x.d0 <= dayN(R.to));
             return { t: arg ? 'Tài sản: ' + arg : 'Tài sản đầu tư', why: 'Nguyên giá = tổng tiền đã chi. Đã khấu hao = phần đã hao mòn từ ngày bắt đầu khấu hao đến ' + dmy(R.to) + '. Còn lại = nguyên giá − đã khấu hao.',
-              calc: [ln('Nguyên giá', sumBy(gs, g => g.cost), '+'), ln('Đã khấu hao', sumBy(gs, g => g.acc), '−'), ln('Giá trị còn lại', sumBy(gs, g => g.left), '=', 1), ...(sumBy(xs, x => x.salv) ? [ln('trong đó giá trị thu hồi ước tính (không khấu hao)', sumBy(xs, x => x.salv), '')] : []), ...gs.map(g => M.salvG.get(g.g)).filter(o => o && o.f).map(o => ln(`= ${numberFormat.format(o.f.p)} đ/kg × ${String(o.f.w).replace('.', ',')} kg/con × ${numberFormat.format(o.f.n)} con${o.f.auto ? ' (gà còn lại, tự lấy từ Trang trại)' : ''}`, null, '', 0, ' '))], lt: 'Từng khoản', cols: ['Ngày chi', 'Nội dung · nguyên giá', 'Bắt đầu khấu hao · đã dùng', 'Còn lại'],
-              rows: xs.sort((a, b) => b.amount - a.amount).map(x => { const used = Math.min(x.lifeDays, Math.max(0, dayN(R.to) + 1 - x.d0)), left = x.amount - x.base * used / x.lifeDays; return { c: [x.date ? dmy(x.date) : '—', `${x.text || '—'}${x.contrib ? ' (bên khác góp chung – giảm nguyên giá)' : ''} · ${mf(x.amount)}${x.salv ? ` (thu hồi ${mf(x.salv)})` : ''}`, `${dmy(new Date(x.d0 * 864e5).toISOString().slice(0, 10))} · ${(used / x.lifeDays * 100).toFixed(0)}% / ${lifeTxt(x.life)}`, mf(left)], v: left }; }) }; }
+              calc: [ln('Nguyên giá', sumBy(gs, g => g.cost), '+'), ln('Đã khấu hao', sumBy(gs, g => g.acc), '−'), ln('Giá trị còn lại', sumBy(gs, g => g.left), '=', 1), ...(gs.length === 1 && gs[0].mDone !== undefined ? [ln(`Đã khấu hao ${moTx(gs[0].mDone * 365.25 / 12)} · còn ${moTx(gs[0].mLeft * 365.25 / 12)}${gs[0].multi ? ' (bình quân theo số tiền các khoản)' : ''}`, null, '', 0, ' ')] : []), ...(sumBy(xs, x => x.salv) ? [ln('trong đó giá trị thu hồi ước tính (không khấu hao)', sumBy(xs, x => x.salv), '')] : []), ...gs.map(g => M.salvG.get(g.g)).filter(o => o && o.f).map(o => ln(`= ${numberFormat.format(o.f.p)} đ/kg × ${String(o.f.w).replace('.', ',')} kg/con × ${numberFormat.format(o.f.n)} con${o.f.auto ? ' (gà còn lại, tự lấy từ Trang trại)' : ''}`, null, '', 0, ' '))], lt: 'Từng khoản', cols: ['Ngày chi', 'Nội dung · nguyên giá', 'Bắt đầu khấu hao · thời gian', 'Còn lại'],
+              rows: xs.sort((a, b) => b.amount - a.amount).map(x => { const used = Math.min(x.lifeDays, Math.max(0, dayN(R.to) + 1 - x.d0)), left = x.amount - x.base * used / x.lifeDays; return { c: [x.date ? dmy(x.date) : '—', `${x.text || '—'}${x.contrib ? ' (bên khác góp chung – giảm nguyên giá)' : ''} · ${mf(x.amount)}${x.salv ? ` (thu hồi ${mf(x.salv)})` : ''}`, `${dmy(new Date(x.d0 * 864e5).toISOString().slice(0, 10))} · đã ${moTx(used)} · còn ${moTx(x.lifeDays - used)} / ${lifeTxt(x.life)}`, mf(left)], v: left }; }) }; }
           case 'ar': return { t: 'Phải thu khách hàng', why: 'Tiền trứng đã xuất (theo Sổ xuất hàng) nhưng chưa thấy khoản thu tương ứng trong Sổ thu, tính luỹ kế đến ' + dmy(R.to) + '.' + (X.arRaw < 0 ? ' <b>Tiền đã thu đang lớn hơn doanh thu theo sổ xuất hàng</b> nên phải thu = 0; có thể Sổ xuất hàng còn thiếu ngày hoặc thiếu giá.' : ''),
             calc: [ln('Doanh thu luỹ kế', X.cum.rev, '+'), ln('Đã thu tiền bán trứng luỹ kế', X.cum.egg, '−'), ln('Phải thu', X.ar, '=', 1)], lt: 'Các đợt chưa ghi thu đủ', cols: ['Đợt', 'Thành tiền', 'Đã ghi thu', 'Còn phải thu'], rows: X.pers.map(p => ({ c: [p.name, mf(p.money), mf(p.sum), mf(p.left)], v: p.left })) };
           case 'per': { const p = (fin.periods || []).find(q => periodName(q) === arg); if (!p) return null; const c = periodRecorded(p);
