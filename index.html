@@ -243,7 +243,10 @@
     body.locked .data-only, body.locked .logged-only { display: none !important; }
     body:not(.is-admin) .admin-only { display: none !important; }
     body.is-admin .viewer-only { display: none !important; }
-    body.is-mgr #accessOpen { display: none !important; }
+    body.is-mgr #accessOpen, body.is-mgr #usersOpen { display: none !important; }
+    .us-row { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1e7dd; } .us-row input, .us-row select { width: 100%; min-width: 0; } .us-row .us-act { display: flex; gap: 6px; } .us-row .us-act button { white-space: nowrap; } .us-head { font-size: .76rem; color: var(--muted); font-weight: 600; padding-bottom: 4px; } .us-tag { display: inline-block; font-size: .7rem; background: #fde7d9; color: #b5391c; border-radius: 6px; padding: 1px 6px; margin-left: 4px; font-weight: 700; } .us-new { background: #fbf6f0; border-radius: 12px; padding: 4px 10px; margin-top: 10px; border-bottom: 0; }
+    @media (max-width: 640px) { .us-row { grid-template-columns: 1fr 1fr; } .us-head { display: none; } }
+    .pw-def { background: #fff4e5; border: 1px solid #f3c68b; border-radius: 10px; padding: 10px 12px; margin: 0 0 10px; font-size: .9rem; }
     .rec-badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 800; white-space: nowrap; line-height: 1.3; }
     .rec-badge.done { background: #e8f5ec; color: #1b7a44; border: 1px solid #b9dfc6; }
     .rec-badge.part { background: #fff8e1; color: #7a5c00; border: 1px solid #ecd08a; }
@@ -887,8 +890,8 @@
         <label>Địa chỉ Web App (Apps Script)
           <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
         </label>
-        <label>Mã đăng nhập
-          <input id="syncToken" type="password" autocomplete="off" placeholder="Mã do quản trị viên cấp">
+        <label>Mật khẩu
+          <input id="syncToken" type="password" autocomplete="current-password" placeholder="Mật khẩu do quản trị viên cấp">
         </label>
       </div>
       <div class="form-actions">
@@ -896,13 +899,15 @@
         <button type="button" class="button button-secondary logged-only" id="syncRefreshButton">Làm mới ngay</button>
         <button type="button" class="button button-secondary admin-only" id="syncAllButton">Gửi toàn bộ dữ liệu</button>
         <button type="button" class="button button-secondary admin-only" id="accessOpen">Nhật ký đăng nhập</button>
+        <button type="button" class="button button-secondary admin-only" id="usersOpen">Quản lý tài khoản</button>
+        <button type="button" class="button button-secondary logged-only" id="pwOpen">Đổi mật khẩu</button>
         <button type="button" class="button button-plain logged-only" id="logoutButton">Đăng xuất</button>
       </div>
       <p class="help" id="syncMessage"></p>
       </div>
     </section>
     <button type="button" class="button button-primary" id="pwaInstall" hidden style="margin:10px 0 0;width:100%">📲 Cài app vào màn hình chờ</button>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 19/11/2026-f</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 19/11/2026-h</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1325,6 +1330,31 @@
         <div class="form-actions"><button type="submit" class="button button-primary" id="labSave">Lưu vào sổ</button><button type="button" class="button button-plain" id="labAddMore">+ Thêm kết quả</button><button type="button" class="button button-plain" id="labModalCancel">Hủy</button></div>
       </form>
     </div>
+    <div class="modal modal-center" id="pwModal" hidden>
+      <form class="modal-card" id="pwForm" role="dialog" aria-modal="true" aria-labelledby="pwTitle" style="max-width:440px">
+        <button type="button" class="modal-close" id="pwClose" aria-label="Đóng">✕</button>
+        <h2 id="pwTitle">Đổi mật khẩu</h2>
+        <p class="modal-sub" id="pwSub"></p>
+        <div class="pw-def" id="pwDef" hidden>Bạn đang dùng mật khẩu mặc định <b>admin</b>. Hãy đặt mật khẩu mới để người khác không vào được.</div>
+        <div class="sync-fields" style="grid-template-columns:1fr">
+          <label>Mật khẩu mới<input id="pwNew" type="password" autocomplete="new-password" minlength="4" required></label>
+          <label>Nhập lại mật khẩu mới<input id="pwNew2" type="password" autocomplete="new-password" minlength="4" required></label>
+        </div>
+        <p class="alt-note" id="pwMsg" role="status"></p>
+        <div class="form-actions"><button type="submit" class="button button-primary" id="pwSave">Lưu mật khẩu</button><button type="button" class="button button-plain" id="pwCancel">Hủy</button></div>
+      </form>
+    </div>
+    <div class="modal modal-center" id="usersModal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="usersTitle" style="max-width:760px">
+        <button type="button" class="modal-close" id="usersClose" aria-label="Đóng">✕</button>
+        <h2 id="usersTitle">Quản lý tài khoản</h2>
+        <p class="modal-sub">Mỗi người một tên và một mật khẩu riêng. Mật khẩu được mã hoá nên không xem lại được: muốn đổi thì gõ mật khẩu mới rồi bấm Lưu. Danh sách lưu trên máy chủ, dán lại Code.gs không bị mất.</p>
+        <div class="us-row us-head"><span>Tên</span><span>Vai trò</span><span>Mật khẩu mới</span><span></span></div>
+        <div id="usersList"></div>
+        <div class="us-row us-new" id="usersNew"><input id="unName" placeholder="Tên người mới" maxlength="40"><select id="unRole"></select><input id="unPass" type="text" placeholder="Mật khẩu (≥ 4 ký tự)" autocomplete="off"><span class="us-act"><button type="button" class="button button-primary" id="unAdd">+ Thêm</button></span></div>
+        <p class="alt-note" id="usersMsg" role="status"></p>
+      </div>
+    </div>
     <div class="modal modal-center" id="accessModal" hidden>
       <div class="modal-card access-card" role="dialog" aria-modal="true" aria-labelledby="accessTitle">
         <button type="button" class="modal-close" id="accessClose" aria-label="Đóng">✕</button>
@@ -1718,7 +1748,7 @@
         els.toastText.textContent = message;
         els.toast.classList.toggle('error', isError);
         els.toast.classList.add('show');
-        toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
+        toastTimer = setTimeout(() => els.toast.classList.remove('show'), Math.min(12000, Math.max(3000, String(message).length * 70)));
       }
       function resetForm() {
         editingDate = null;
@@ -2035,7 +2065,7 @@
       const KHAC_SUB = [['lai', 'Lãi tiền gửi ngân hàng', /l[ãa]i\s*(ti[ềe]n\s*)?g[ửu]i|l[ãa]i\s*(ng[âa]n\s*h[àa]ng|nh|tk|t[àa]i\s*kho[ảa]n)|l[ãa]i\s*kh[ôo]ng\s*k[ỳy]\s*h[ạa]n/i], ['phan', 'Bán phân', /b[áa]n\s*ph[âa]n|ph[âa]n\s*g[àa]/i]];
       const khacSubOf = r => { const t = String(r.text || '').normalize('NFC'); const h = KHAC_SUB.find(k => k[2].test(t)); return h ? h[0] : 'khac'; };
       const KHAC_SUB_VN = { lai: 'Lãi tiền gửi ngân hàng', phan: 'Bán phân', khac: 'Thu khác' };
-      const THU_KIND_VN = { egg: 'Bán trứng', von: 'Góp vốn', tl: 'Bán gà loại', vay: 'Tiền vay', hoancp: 'Hoàn chi phí', gopdt: 'Góp chung đầu tư', khac: 'Thu khác' };
+      const THU_KIND_VN = { egg: 'Bán trứng', von: 'Góp vốn', tl: 'Bán gà loại', vay: 'Tiền vay', hoancp: 'Hoàn chi phí', gopdt: 'Thu khác', khac: 'Thu khác' };
       const isEggSale = r => {
         const t = String(r.text || '').normalize('NFC').toLowerCase();
         if (/ho[àa]n\s*(l[ạa]i|ti[ềe]n)|chuy[ểe]n\s*sai|l[ãa]i\s*(ti[ềe]n|su[ấa]t|ng[âa]n)|g[óo]p\s*v[ốo]n/.test(t)) return false;
@@ -2055,7 +2085,7 @@
           applySalesPatches(); finLoadedAt = Date.now();
           try { localStorage.setItem(FIN_KEY, JSON.stringify(fin)); } catch (_) { /* bỏ qua */ }
         } catch (error) {
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); finBusy = false; return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); finBusy = false; return; }
           fin.error = String(error && error.message || error);
         }
         finBusy = false; renderAlt();
@@ -2893,7 +2923,7 @@
         altMsg($('tcCfgMsg'), 'Đã áp dụng. Đang lưu lên máy chủ…');
         try { const r = await callScript({ action: 'tcCfgSet', cfg }); if (!r || !r.tcCfg) throw new Error('tcCfgSet'); fin.tcCfg = r.tcCfg; try { localStorage.setItem(FIN_KEY, JSON.stringify(fin)); } catch (_) { /* bỏ qua */ } altMsg($('tcCfgMsg'), 'Đã lưu cài đặt khấu hao (dùng chung cho mọi máy).'); showToast('Đã lưu cài đặt khấu hao.'); }
         catch (error) {
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return; }
           fin.tcCfg = before; renderTc(); renderTcCfg();
           const msg = String(error && error.message || error);
           altMsg($('tcCfgMsg'), /không hợp lệ|unknown|tcCfgSet|Thao tác/i.test(msg) ? 'Máy chủ chưa hỗ trợ lưu cài đặt: hãy dán Code.gs mới và triển khai lại (New version), rồi lưu lại.' : 'Không lưu được: ' + msg, true);
@@ -3216,7 +3246,7 @@
           lab = { items: data.labs || [], loaded: true, error: '' };
           try { localStorage.setItem(LAB_KEY, JSON.stringify({ items: lab.items })); } catch (_) { /* bỏ qua */ }
         } catch (error) {
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); labBusy = false; return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); labBusy = false; return; }
           lab.error = String(error && error.message || error);
         }
         labBusy = false; if (curView === 'lab') renderLab();
@@ -3341,7 +3371,7 @@
       async function labCall(payload, msgEl, okText) {
         altMsg(msgEl, 'Đang ghi vào Sheet…');
         try { const r = await callScript(payload); altMsg(msgEl, okText || 'Đã ghi vào Sheet.'); return r; }
-        catch (error) { if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
+        catch (error) { if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
       }
       // ----- đọc tệp: PDF (chữ có tọa độ) hoặc ảnh (OCR) -----
       const labScripts = {};
@@ -3538,8 +3568,10 @@
         }
         const res = await labCall(files.length ? { action: 'labAdd', items, files } : { action: 'labAdd', items }, $('labModalMsg'), 'Đã lưu vào sổ.');
         if (!res) { $('labSave').disabled = false; return; }
-        (res.saved || []).forEach((sv, i) => { const it = { ...items[i], dist: items[i].dist, id: sv.id, row: sv.row, by: '', file: items[i].fileK !== undefined && !res.fileErr ? 1 : (lab.items.find(x => x.id === sv.id) || {}).file || 0 }; delete it.fileK; ['age', 'dpv', 'n', 'gmt', 'cv', 'pctOk'].forEach(k => { if (it[k] === '') it[k] = k === 'gmt' || k === 'cv' || k === 'pctOk' ? null : 0; }); const at = lab.items.findIndex(x => x.id === sv.id); if (at >= 0) lab.items[at] = it; else lab.items.push(it); });
-        lab.loaded = true; closeLabModal(); renderLab(); showToast('Đã lưu ' + items.length + ' kết quả xét nghiệm.' + (res.fileErr ? ' ' + res.fileErr : fileNote ? ' ' + fileNote : '')); loadLab();
+        (res.saved || []).forEach((sv, i) => { const it = { ...items[i], dist: items[i].dist, id: sv.id, row: sv.row, by: '', file: items[i].fileK !== undefined && !res.fileErr && 'fileErr' in res ? 1 : (lab.items.find(x => x.id === sv.id) || {}).file || 0 }; delete it.fileK; ['age', 'dpv', 'n', 'gmt', 'cv', 'pctOk'].forEach(k => { if (it[k] === '') it[k] = k === 'gmt' || k === 'cv' || k === 'pctOk' ? null : 0; }); const at = lab.items.findIndex(x => x.id === sv.id); if (at >= 0) lab.items[at] = it; else lab.items.push(it); });
+        lab.loaded = true; closeLabModal(); renderLab(); const oldSrv = files.length && !('fileErr' in res);
+        if (oldSrv) lab.items.forEach(x => { if ((res.saved || []).some(sv => sv.id === x.id)) x.file = 0; });
+        showToast('Đã lưu ' + items.length + ' kết quả xét nghiệm.' + (oldSrv ? ' Chưa lưu được phiếu gốc: máy chủ Apps Script đang chạy Code.gs cũ – hãy dán Code.gs mới, chạy capQuyenDrive và Triển khai phiên bản mới.' : res.fileErr ? ' ' + res.fileErr : fileNote ? ' ' + fileNote : ''), !!(oldSrv || res.fileErr)); loadLab();
       });
       // ----- nhận tệp: bấm chọn, kéo thả, dán -----
       $('labDrop').addEventListener('click', () => { if (isAdmin()) $('labFile').click(); });
@@ -3570,7 +3602,7 @@
             renderAlt();
           }
           loadFin(); return r; }
-        catch (error) { dropTemp(); if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
+        catch (error) { dropTemp(); if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg(msgEl, 'Không ghi được: ' + (error && error.message || error), true); return null; }
       }
       // ---------- sửa giá: hiện NGAY trên màn hình, ghi vào Sheet ở nền; lỗi thì hoàn lại ----------
       let salesPatches = [];   // các thay đổi chưa được Sheet xác nhận: [{ id, apply(rows) }]
@@ -3586,7 +3618,7 @@
           loadFin(); return res;
         }).catch(error => {
           drop();
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return null; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return null; }
           if (!salesPatches.length) fin.sales = backup; applySalesPatches(); renderSales(); loadFin();
           altMsg($('priceMsg'), 'Không ghi được, đã hoàn lại giá cũ: ' + (error && error.message || error), true); showToast('Không ghi được giá vào Sheet. Đã hoàn lại.');
           return null;
@@ -3658,7 +3690,7 @@
           altMsg($('accessMsg'), accessRows.length ? `${accessRows.length} lượt gần nhất (mới nhất ở trên).` : '');
           renderAccess();
         } catch (error) {
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return; }
           altMsg($('accessMsg'), /không hợp lệ|thao tác/i.test(error.message) ? 'Script trên Google chưa phải bản mới nhất: hãy dán lại Code.gs và triển khai phiên bản mới.' : 'Không tải được: ' + error.message, true);
         }
       }
@@ -4241,7 +4273,7 @@
           closeApprove(); apvBusy = false;
         } catch (error) {
           apvBusy = false;
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return; }
           if (target) { subs = [target, ...subs]; render(); }
           showToast(error.message, true);
           if (!els.apvModal.hidden) { els.apvError.textContent = error.message; els.apvError.hidden = false; }
@@ -4281,7 +4313,7 @@
         if (document.visibilityState === 'hidden' && !isAdmin()) return;
         if (!(isAdmin() || isEntry()) || !syncReady() || pulling || syncing || apvBusy) return;
         quickTick++; if (isEntry() && quickTick % 2) return;   // nhập liệu hỏi thưa hơn (khoảng 10 giây)
-        try { const res = await callScript({ action: 'subs' }); if (res && res.ver !== undefined && String(res.ver) !== subsVer) await pullSync(); } catch (error) { if (isAuthError(error)) forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); }
+        try { const res = await callScript({ action: 'subs' }); if (res && res.ver !== undefined && String(res.ver) !== subsVer) await pullSync(); } catch (error) { if (isAuthError(error)) forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); }
       }
       setInterval(quickPoll, 5000);
       els.entryBody.addEventListener('click', event => { const edit = event.target.closest('[data-edit]'); if (edit) startEdit(edit.dataset.edit); });
@@ -4410,7 +4442,7 @@
       }
       async function flushFlock() {
         if (!isAdmin() || !sync.flockPending || !syncReady()) return;
-        try { await callScript({ action: 'setConfig', initialFlock: state.initialFlock, alerts: normalizeAlerts(state.alerts) }); sync.flockPending = false; saveSync(); } catch (error) { if (isAuthError(error)) forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); }
+        try { await callScript({ action: 'setConfig', initialFlock: state.initialFlock, alerts: normalizeAlerts(state.alerts) }); sync.flockPending = false; saveSync(); } catch (error) { if (isAuthError(error)) forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); }
       }
       async function flushSync() {
         if (syncing || !canWrite() || !syncReady() || !Object.keys(sync.pending).length) return;
@@ -4432,7 +4464,7 @@
           if (Object.keys(sync.pending).length) await flushSync();
         } catch (error) {
           syncing = false;
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return; }
           if (/^Không được lưu/.test(String(error.message))) {
             // Máy chủ từ chối hẳn (không phải lỗi mạng): bỏ số liệu chờ gửi, tải lại số liệu thật từ Sheet
             sync.pending = {}; saveSync(); setSyncStatus('Chưa lưu được', 'error'); setSyncMessage(error.message, true); showToast(error.message, true);
@@ -4485,12 +4517,54 @@
           if (Object.keys(sync.pending).length) await flushSync();
           if (sync.flockPending) await flushFlock();
         } catch (error) {
-          if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực hoặc đã bị thu hồi. Hãy đăng nhập lại.'); return; }
+          if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực hoặc đã bị thu hồi. Hãy đăng nhập lại.'); return; }
           setSyncStatus('Chưa làm mới được', 'error');
           setSyncMessage(`Không làm mới được: ${error.message}`, true);
         } finally { pulling = false; }
       }
 
+      // ----- đổi mật khẩu (mọi người) & quản lý tài khoản (quản trị) -----
+      const ROLE_OPTS = [['admin', 'Quản trị'], ['mgr', 'Quản lý'], ['viewer', 'Chỉ xem'], ['entry', 'Nhập liệu']];
+      const roleSel = v => ROLE_OPTS.map(([k, t]) => `<option value="${k}"${k === v ? ' selected' : ''}>${t}</option>`).join('');
+      function pwOpenModal(isDef) { $('pwSub').textContent = sync.name ? 'Tài khoản: ' + sync.name : ''; $('pwDef').hidden = !isDef; $('pwNew').value = ''; $('pwNew2').value = ''; altMsg($('pwMsg'), ''); $('pwSave').disabled = false; $('pwModal').hidden = false; setMenu(false); setTimeout(() => $('pwNew').focus(), 50); }
+      const pwClose = () => { $('pwModal').hidden = true; };
+      $('pwOpen').addEventListener('click', () => { if (sync.role) pwOpenModal(!!sync.def); });
+      $('pwClose').addEventListener('click', pwClose); $('pwCancel').addEventListener('click', pwClose);
+      $('pwForm').addEventListener('submit', async e => {
+        e.preventDefault(); const a = $('pwNew').value, b = $('pwNew2').value;
+        if (a.length < 4) { altMsg($('pwMsg'), 'Mật khẩu phải có ít nhất 4 ký tự.', true); return; }
+        if (a !== b) { altMsg($('pwMsg'), 'Hai lần nhập không giống nhau.', true); return; }
+        $('pwSave').disabled = true; altMsg($('pwMsg'), 'Đang lưu…');
+        try { await callScript({ action: 'passChange', pass: a }); sync.token = a; sync.def = false; saveSync(); syncEls.token.value = a; pwClose(); showToast('Đã đổi mật khẩu. Lần sau đăng nhập bằng mật khẩu mới.'); }
+        catch (error) { $('pwSave').disabled = false; altMsg($('pwMsg'), String(error && error.message || error).replace(/^Không được lưu: /, ''), true); }
+      });
+      let usersData = [];
+      function usersRender() {
+        $('usersList').innerHTML = usersData.map(u => `<div class="us-row" data-uid="${escapeHtml(u.id)}"><input data-uf="name" value="${escapeHtml(u.name)}" maxlength="40" aria-label="Tên">${''}<select data-uf="role" aria-label="Vai trò"${u.me ? ' disabled title="Không tự đổi vai trò của chính mình"' : ''}>${roleSel(u.role)}</select><input data-uf="pass" type="text" placeholder="${u.def ? 'đang là admin – nên đổi' : 'để trống = giữ nguyên'}" autocomplete="off" aria-label="Mật khẩu mới"><span class="us-act"><button type="button" class="button button-secondary" data-us="save">Lưu</button>${u.me ? '<span class="us-tag">Bạn</span>' : `<button type="button" class="button button-plain" data-us="del">Xoá</button>`}</span></div>`).join('') || '<p class="alt-note">Chưa có tài khoản.</p>';
+      }
+      async function usersCall(payload, okText) {
+        altMsg($('usersMsg'), 'Đang lưu…');
+        try { const r = await callScript(payload); if (r.users) { usersData = r.users; usersRender(); } altMsg($('usersMsg'), okText || ''); return r; }
+        catch (error) { if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return null; } altMsg($('usersMsg'), String(error && error.message || error).replace(/^Không được lưu: /, ''), true); return null; }
+      }
+      $('usersOpen').addEventListener('click', async () => { if (!canSeeLog()) return; $('unRole').innerHTML = roleSel('viewer'); $('usersModal').hidden = false; setMenu(false); $('usersList').innerHTML = '<p class="alt-note">Đang tải…</p>'; await usersCall({ action: 'usersList' }, ''); });
+      $('usersClose').addEventListener('click', () => { $('usersModal').hidden = true; });
+      $('usersModal').addEventListener('click', e => { if (e.target === $('usersModal')) $('usersModal').hidden = true; });
+      $('usersList').addEventListener('click', async e => {
+        const b = e.target.closest('[data-us]'), row = e.target.closest('[data-uid]'); if (!b || !row) return;
+        const id = row.dataset.uid, u = usersData.find(x => x.id === id); if (!u) return;
+        if (b.dataset.us === 'del') { if (!window.confirm('Xoá tài khoản "' + u.name + '"? Người này sẽ không đăng nhập được nữa.')) return; await usersCall({ action: 'userDel', id }, 'Đã xoá tài khoản ' + u.name + '.'); return; }
+        const v = f => row.querySelector(`[data-uf="${f}"]`).value.trim(), pass = v('pass');
+        const r = await usersCall({ action: 'userSave', user: { id, name: v('name'), role: u.me ? u.role : v('role'), pass } }, 'Đã lưu ' + v('name') + (pass ? ' (đã đặt mật khẩu mới)' : '') + '.');
+        if (r && u.me) { sync.name = v('name'); if (pass) { sync.token = pass; sync.def = false; syncEls.token.value = pass; } saveSync(); refreshSyncStatus(); }
+      });
+      $('unAdd').addEventListener('click', async () => {
+        const name = $('unName').value.trim(), pass = $('unPass').value;
+        if (!name || !pass) { altMsg($('usersMsg'), 'Nhập tên và mật khẩu cho người mới.', true); return; }
+        const r = await usersCall({ action: 'userSave', user: { name, role: $('unRole').value, pass } }, 'Đã thêm ' + name + '. Gửi mật khẩu cho người đó để đăng nhập.');
+        if (r) { $('unName').value = ''; $('unPass').value = ''; }
+      });
+      document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (!$('pwModal').hidden) pwClose(); if (!$('usersModal').hidden) $('usersModal').hidden = true; });
       syncEls.login.addEventListener('click', async () => {
         sync.url = syncEls.url.value.trim(); sync.token = syncEls.token.value.trim();
         if (!syncReady()) { setSyncStatus('Chưa đăng nhập'); setSyncMessage('Địa chỉ phải có dạng https://script.google.com/macros/s/.../exec và cần nhập mã đăng nhập.', true); return; }
@@ -4499,14 +4573,15 @@
           const result = await callScript({ action: 'login' });
           // Đổi người đăng nhập: bỏ số liệu tạm của người trước
           state = { version: DATA_VERSION, initialFlock: 0, records: [], alerts: { ...DEFAULT_ALERTS } };
-          sync.role = ['admin', 'entry'].includes(result.role) ? result.role : 'viewer'; sync.mgr = sync.role === 'admin' && !!result.mgr; sync.name = String(result.name || ''); sync.today = String(result.today || ''); sync.pending = {}; sync.flockPending = false; subs = []; saveState(); saveSync();
+          sync.role = ['admin', 'entry'].includes(result.role) ? result.role : 'viewer'; sync.mgr = sync.role === 'admin' && !!result.mgr; sync.name = String(result.name || ''); sync.def = !!result.def; sync.today = String(result.today || ''); sync.pending = {}; sync.flockPending = false; subs = []; saveState(); saveSync();
           applyRole(); resetForm(); render(); refreshSyncStatus();
           if (sync.role === 'admin' && window.Notification && Notification.permission === 'default') { try { Notification.requestPermission(); } catch (_) { /* bỏ qua */ } }
           setSyncMessage(`Đã đăng nhập với quyền ${sync.role === 'admin' ? (sync.mgr ? 'quản lý' : 'quản trị') : sync.role === 'entry' ? 'nhập liệu' : 'chỉ xem'}. Đang tải số liệu…`, false);
+          if (sync.def) setTimeout(() => pwOpenModal(true), 300);
           await pullSync(true);
         } catch (error) {
           sync.role = ''; sync.token = isAuthError(error) ? '' : sync.token; saveSync(); applyRole(); setSyncStatus('Chưa đăng nhập', 'error');
-          setSyncMessage(isAuthError(error) ? 'Mã đăng nhập không đúng.' : `Không kết nối được: ${error.message}`, true);
+          setSyncMessage(isAuthError(error) ? 'Mật khẩu không đúng.' : `Không kết nối được: ${error.message}`, true);
         }
       });
       syncEls.refresh.addEventListener('click', () => { pullSync(true); loadFin(true); });
@@ -4524,7 +4599,7 @@
           const missing = result.missing || [];
           setSyncMessage(`Đã cập nhật ${result.updated} ngày lên Google Sheet.${missing.length ? ` Có ${missing.length} ngày chưa có dòng trong Sheet (${missing.slice(0, 5).map(formatDate).join(', ')}${missing.length > 5 ? '…' : ''}).` : ''}${result.debug ? ' Chi tiết: ' + JSON.stringify(result.debug) : ''}`, missing.length > 0);
           showToast('Đã gửi toàn bộ dữ liệu.');
-        } catch (error) { if (isAuthError(error)) { forceLogout('Mã đăng nhập không còn hiệu lực. Hãy đăng nhập lại.'); return; } refreshSyncStatus(); setSyncMessage(`Chưa gửi được: ${error.message}`, true); }
+        } catch (error) { if (isAuthError(error)) { forceLogout('Mật khẩu không còn hiệu lực. Hãy đăng nhập lại.'); return; } refreshSyncStatus(); setSyncMessage(`Chưa gửi được: ${error.message}`, true); }
       });
       setInterval(() => { if (document.visibilityState !== 'hidden') pullSync(); }, POLL_MS);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullSync(); });
