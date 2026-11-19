@@ -1,7 +1,7 @@
 {
   "name": "Quản lý trại gà",
   "short_name": "Trại gà",
-  "start_url": "./Index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fdf5ec",
