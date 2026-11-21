@@ -664,6 +664,10 @@
     .tc-table tr.tc-big td { font-weight: 900; font-size: 1.02rem; background: #fbf4e8; }
     .tc-table td.tc-ind { padding-left: 22px; }
     .tc-table .tc-pct { color: #8a7767; font-size: .78rem; font-weight: 600; margin-left: 6px; }
+    .metric .day-odd { display: block; margin-top: 2px; font-size: .82rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .today-row .day-odd { display: block; text-align: right; margin-top: 1px; font-size: .78rem; line-height: 1.2; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .day-col { white-space: nowrap; font-variant-numeric: tabular-nums; } .day-col .day-odd { display: inline-block; min-width: 5.9em; margin-left: 6px; text-align: left; color: var(--muted); font-size: .8rem; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #historyBody td.number { font-variant-numeric: tabular-nums; }
     .tc-table .tc-mo { display: block; color: #8a7767; font-size: .76rem; font-weight: 600; margin-top: 1px; }
     .tc-pos { color: #1b7a44; } .tc-neg { color: #c0392b; }
     .tc-note { color: var(--muted); font-size: .8rem; margin: 6px 2px 0; line-height: 1.5; }
@@ -908,7 +912,7 @@
       </div>
     </section>
     <button type="button" class="button button-primary" id="pwaInstall" hidden style="margin:10px 0 0;width:100%">📲 Cài app vào màn hình chờ</button>
-    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 19/11/2026-i</p>
+    <p class="copyright">© Toàn bộ bản quyền thuộc Mai Xuân Lâm · Bản 21/11/2026-e</p>
     </nav>
     <div id="menuBackdrop" aria-hidden="true"></div>
     </div>
@@ -1490,6 +1494,7 @@
       const VN_MS = 7 * 3600e3, isoVN = ms => new Date(ms + VN_MS).toISOString().slice(0, 10), timeVN = ms => new Date(ms + VN_MS).toISOString().slice(11, 16);
       function todayIso() { return isoVN(Date.now()); }
       function parseDate(date) { return new Date(`${date}T12:00:00+07:00`); }
+      const dayTxt = n => `(${(Math.round(n / 300 * 10) / 10).toLocaleString('vi-VN')} dây)`;   // quy ra dây: 1 dây = 300 quả
       function formatDate(date) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date); return m ? m[3] + '/' + m[2] + '/' + m[1] : dateFormat.format(parseDate(date)); }
       function shortDate(date) { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(date); return m ? m[2] + '/' + m[1] : shortDateFormat.format(parseDate(date)); }
       function safeNumber(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0; }
@@ -1724,8 +1729,8 @@
           <h2 id="dayTitle">Nhật ký ngày ${formatDate(row.date)}</h2>
           <p class="modal-sub">Tuần tuổi ${week} (${ageText(row.ageDays)}, ${row.ageDays} ngày tuổi)</p>
           <div class="metric-grid">
-            ${metric('Trứng trắng', numberFormat.format(row.whiteEggs))}
-            ${metric('Trứng đỏ', numberFormat.format(row.redEggs))}
+            ${metric('Trứng trắng', numberFormat.format(row.whiteEggs) + `<span class="day-odd">${dayTxt(row.whiteEggs)}</span>`)}
+            ${metric('Trứng đỏ', numberFormat.format(row.redEggs) + `<span class="day-odd">${dayTxt(row.redEggs)}</span>`)}
             ${metric('Trứng vỡ', numberFormat.format(row.brokenEggs), `${pct(brokenPct)} trên trứng trắng + vỡ`)}
             ${metric('Trứng huỷ', numberFormat.format(row.huyEggs))}
             ${metric('Gà chết', numberFormat.format(row.deaths), `${pct(deathPct)} đàn`)}
@@ -1787,8 +1792,8 @@
         const rate = latest.rate === null ? 'Chưa tính được' : `${latest.rate.toFixed(1).replace('.', ',')}%`;
         els.latestSummary.innerHTML = `
           <div class="today-summary">
-            <div class="today-row"><span>Trứng trắng</span><strong>${numberFormat.format(latest.whiteEggs)}</strong></div>
-            <div class="today-row"><span>Trứng đỏ</span><strong>${numberFormat.format(latest.redEggs)}</strong></div>
+            <div class="today-row"><span>Trứng trắng</span><strong>${numberFormat.format(latest.whiteEggs)}<small class="day-odd">${dayTxt(latest.whiteEggs)}</small></strong></div>
+            <div class="today-row"><span>Trứng đỏ</span><strong>${numberFormat.format(latest.redEggs)}<small class="day-odd">${dayTxt(latest.redEggs)}</small></strong></div>
             <div class="today-row"><span>Trứng vỡ</span><strong>${numberFormat.format(latest.brokenEggs)}</strong></div>
             <div class="today-row"><span>Trứng huỷ</span><strong>${numberFormat.format(latest.huyEggs)}</strong></div>
             <div class="today-row"><span>Gà chết</span><strong>${numberFormat.format(latest.deaths)}</strong></div>
@@ -1819,8 +1824,8 @@
           <tr class="clickable" data-detail="${row.date}" title="Bấm để xem chi tiết ngày này">
             <td>${formatDate(row.date)}</td>
             <td title="${row.ageDays} ngày tuổi">${Math.floor(row.ageDays / 7)} tuần</td>
-            <td class="number">${numberFormat.format(row.whiteEggs)}</td>
-            <td class="number">${numberFormat.format(row.redEggs)}</td>
+            <td class="number day-col">${numberFormat.format(row.whiteEggs)}<small class="day-odd">${dayTxt(row.whiteEggs)}</small></td>
+            <td class="number day-col">${numberFormat.format(row.redEggs)}<small class="day-odd">${dayTxt(row.redEggs)}</small></td>
             <td class="number">${numberFormat.format(row.brokenEggs)}</td>
             <td class="number">${numberFormat.format(row.huyEggs)}</td>
             <td class="number">${numberFormat.format(row.deaths)}</td>
@@ -1939,8 +1944,8 @@
       function csvCell(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
       function exportCsv() {
         const rows = computedRecords();
-        const headers = ['Ngày', 'Tuần tuổi', 'Trứng trắng', 'Trứng đỏ', 'Trứng vỡ', 'Trứng huỷ', 'Gà chết', 'Gà còn lại', 'Tỷ lệ đẻ (%)', 'Ghi chú'];
-        const data = rows.map(row => [row.date, (row.ageDays / 7).toFixed(2), row.whiteEggs, row.redEggs, row.brokenEggs, row.huyEggs, row.deaths, row.remaining, row.rate === null ? '' : row.rate.toFixed(2), row.notes]);
+        const headers = ['Ngày', 'Tuần tuổi', 'Trứng trắng', 'Trứng trắng (dây)', 'Trứng đỏ', 'Trứng đỏ (dây)', 'Trứng vỡ', 'Trứng huỷ', 'Gà chết', 'Gà còn lại', 'Tỷ lệ đẻ (%)', 'Ghi chú'];
+        const data = rows.map(row => [row.date, (row.ageDays / 7).toFixed(2), row.whiteEggs, (row.whiteEggs / 300).toFixed(1), row.redEggs, (row.redEggs / 300).toFixed(1), row.brokenEggs, row.huyEggs, row.deaths, row.remaining, row.rate === null ? '' : row.rate.toFixed(2), row.notes]);
         const csv = '\ufeff' + [headers, ...data].map(row => row.map(csvCell).join(',')).join('\r\n');
         downloadFile(`trai-ga-${todayIso()}.csv`, csv, 'text/csv;charset=utf-8'); showToast('Đã xuất file CSV.');
       }
